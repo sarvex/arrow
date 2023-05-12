@@ -177,11 +177,10 @@ def string_literal(s):
     max_len = 50
     if isinstance(s, gdb.Value):
         s = s.string()
-    if len(s) > max_len:
-        s = s[:max_len]
-        return '"' + s.translate(_string_literal_mapping) + '" [continued]'
-    else:
-        return '"' + s.translate(_string_literal_mapping) + '"'
+    if len(s) <= max_len:
+        return f'"{s.translate(_string_literal_mapping)}"'
+    s = s[:max_len]
+    return f'"{s.translate(_string_literal_mapping)}" [continued]'
 
 
 def bytes_literal(val, size=None):
@@ -324,7 +323,7 @@ def scalar_class_from_type(name):
     corresponding Scalar class name.
     """
     assert name.endswith("Type")
-    return name[:-4] + "Scalar"
+    return f"{name[:-4]}Scalar"
 
 
 def array_class_from_type(name):
@@ -333,7 +332,7 @@ def array_class_from_type(name):
     corresponding Array class name.
     """
     assert name.endswith("Type")
-    return name[:-4] + "Array"
+    return f"{name[:-4]}Array"
 
 
 class CString:
@@ -649,20 +648,14 @@ class BufferPtr:
 
     @property
     def data(self):
-        if self.buf is None:
-            return None
-        return self.buf.data
+        return None if self.buf is None else self.buf.data
 
     @property
     def size(self):
-        if self.buf is None:
-            return None
-        return self.buf.size
+        return None if self.buf is None else self.buf.size
 
     def bytes_literal(self):
-        if self.buf is None:
-            return None
-        return self.buf.bytes_literal()
+        return None if self.buf is None else self.buf.bytes_literal()
 
 
 class TypedBuffer(Buffer):
@@ -675,7 +668,7 @@ class TypedBuffer(Buffer):
         super().__init__(val)
         self.mem_format = mem_format
         if not self.is_boolean:
-            self.byte_width = struct.calcsize('=' + self.mem_format)
+            self.byte_width = struct.calcsize(f'={self.mem_format}')
 
     @classmethod
     def from_type_id(cls, val, type_id):
@@ -718,7 +711,7 @@ class TypedView(Sequence):
         assert isinstance(mem, memoryview)
         self.mem = mem
         self.mem_format = mem_format
-        self.byte_width = struct.calcsize('=' + mem_format)
+        self.byte_width = struct.calcsize(f'={mem_format}')
         self.length = mem.nbytes // self.byte_width
 
     def _check_index(self, index):
@@ -734,7 +727,7 @@ class TypedView(Sequence):
         # Cannot use memoryview.cast() because the 'e' format for half-floats
         # is poorly supported.
         mem = self.mem[index * w:(index + 1) * w]
-        return struct.unpack('=' + self.mem_format, mem)
+        return struct.unpack(f'={self.mem_format}', mem)
 
 
 class Bitmap(Sequence):
@@ -801,9 +794,7 @@ class NullBitmap(Bitmap):
 
     def __getitem__(self, index):
         self._check_index(index)
-        if self.view is None:
-            return True
-        return super().__getitem__(index)
+        return True if self.view is None else super().__getitem__(index)
 
     @classmethod
     def from_buffer(cls, buf, offset, length):
@@ -1103,8 +1094,7 @@ class TimestampTypePrinter(TimeTypePrinter):
     """
 
     def to_string(self):
-        tz = StdString(self.val['timezone_'])
-        if tz:
+        if tz := StdString(self.val['timezone_']):
             return f'{self._format_type()}({self._get_unit()}, {tz})'
         else:
             return f'{self._format_type()}({self._get_unit()})'
@@ -1138,9 +1128,7 @@ class ListTypePrinter(TypePrinter):
 
     def _get_value_type(self):
         fields = self.fields
-        if len(fields) != 1:
-            return None
-        return fields[0].type
+        return None if len(fields) != 1 else fields[0].type
 
     def to_string(self):
         child = self._get_value_type()
@@ -1464,9 +1452,7 @@ class StructScalarPrinter(ScalarPrinter):
             yield ("value", deref(value))
 
     def to_string(self):
-        if not self.is_valid:
-            return self._format_null()
-        return f"{self._format_type()}"
+        return self._format_null() if not self.is_valid else f"{self._format_type()}"
 
 
 class SparseUnionScalarPrinter(ScalarPrinter):
@@ -1801,8 +1787,7 @@ class BinaryArrayDataPrinter(ArrayDataPrinter):
         for i, valid in enumerate(null_bits):
             if valid:
                 start = offsets[i]
-                size = offsets[i + 1] - start
-                if size:
+                if size := offsets[i + 1] - start:
                     yield self._valid_child(
                         i, self.format_string(values + start, size))
                 else:
@@ -1825,11 +1810,10 @@ class ArrayPrinter:
         return self.data_printer._format_contents()
 
     def to_string(self):
-        if self.data_printer.type_class.is_parametric:
-            ty = self.data_printer.type
-            return f"arrow::{self.name} of type {ty}, {self._format_contents()}"
-        else:
+        if not self.data_printer.type_class.is_parametric:
             return f"arrow::{self.name} of {self._format_contents()}"
+        ty = self.data_printer.type
+        return f"arrow::{self.name} of type {ty}, {self._format_contents()}"
 
     def display_hint(self):
         return self.data_printer.display_hint()
@@ -2081,9 +2065,7 @@ def lookup_type_class(type_id):
     Lookup a type class (an instance of DataTypeClass) by its type id.
     """
     traits = type_traits_by_id.get(type_id)
-    if traits is not None:
-        return traits.factory(traits.name)
-    return None
+    return traits.factory(traits.name) if traits is not None else None
 
 
 class StatusPrinter:
@@ -2133,10 +2115,7 @@ class StatusPrinter:
             s = f"arrow::Status(<unknown code {code}>, "
         s += StdString(state['msg']).string_literal()
         detail_msg = self._format_detail(state)
-        if detail_msg is not None:
-            return s + f", detail={detail_msg})"
-        else:
-            return s + ")"
+        return f"{s}, detail={detail_msg})" if detail_msg is not None else f"{s})"
 
     def to_string(self):
         state_ptr = self.val['state_']
@@ -2306,10 +2285,7 @@ class BufferPrinter:
         self.val = val
 
     def to_string(self):
-        if bool(self.val['is_mutable_']):
-            mutable = 'mutable'
-        else:
-            mutable = 'read-only'
+        mutable = 'mutable' if bool(self.val['is_mutable_']) else 'read-only'
         size = int(self.val['size_'])
         if size == 0:
             return f"arrow::{self.name} of size 0, {mutable}"

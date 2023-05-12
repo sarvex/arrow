@@ -63,13 +63,16 @@ class MavenDefinition:
     @property
     def build_arguments(self):
         """" Return the arguments to maven invocation for build. """
-        arguments = self.build_definitions + [
-            "-B", "-DskipTests", "-Drat.skip=true",
+        return self.build_definitions + [
+            "-B",
+            "-DskipTests",
+            "-Drat.skip=true",
             "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer."
             "Slf4jMavenTransferListener=warn",
-            "-T", "2C", "install"
+            "-T",
+            "2C",
+            "install",
         ]
-        return arguments
 
     def build(self, build_dir, force=False, cmd_kwargs=None, **kwargs):
         """ Invoke maven into a build directory.
@@ -81,12 +84,8 @@ class MavenDefinition:
         force : bool
                 not used now
         """
-        if os.path.exists(build_dir):
-            # Extra safety to ensure we're deleting a build folder.
-            if not MavenBuild.is_build_dir(build_dir):
-                raise FileExistsError(
-                    "{} is not a maven build".format(build_dir)
-                )
+        if os.path.exists(build_dir) and not MavenBuild.is_build_dir(build_dir):
+            raise FileExistsError(f"{build_dir} is not a maven build")
 
         cmd_kwargs = cmd_kwargs if cmd_kwargs else {}
         assert MavenBuild.is_build_dir(build_dir)
@@ -96,24 +95,21 @@ class MavenDefinition:
     @property
     def list_arguments(self):
         """" Return the arguments to maven invocation for list """
-        arguments = [
-            "-Dskip.perf.benchmarks=false", "-Dbenchmark.list=-lp", "install"
-        ]
-        return arguments
+        return ["-Dskip.perf.benchmarks=false", "-Dbenchmark.list=-lp", "install"]
 
     @property
     def benchmark_arguments(self):
         """" Return the arguments to maven invocation for benchmark """
-        arguments = self.benchmark_definitions + [
-            "-Dskip.perf.benchmarks=false", "-Dbenchmark.fork=1",
+        return self.benchmark_definitions + [
+            "-Dskip.perf.benchmarks=false",
+            "-Dbenchmark.fork=1",
             "-Dbenchmark.jvmargs=\"-Darrow.enable_null_check_for_get=false "
             "-Darrow.enable_unsafe_memory_access=true\"",
-            "install"
+            "install",
         ]
-        return arguments
 
     def __repr__(self):
-        return "MavenDefinition[source={}]".format(self.source)
+        return f"MavenDefinition[source={self.source}]"
 
 
 class MavenBuild(Maven):
@@ -161,13 +157,13 @@ class MavenBuild(Maven):
 
     def list(self, *argv, verbose=False, **kwargs):
         definition_args = self.definition.list_arguments
-        cwd = self.binaries_dir + "/performance"
+        cwd = f"{self.binaries_dir}/performance"
         return self.run(*argv, *definition_args, verbose=verbose, cwd=cwd,
                         env=self.definition.env, **kwargs)
 
     def benchmark(self, *argv, verbose=False, **kwargs):
         definition_args = self.definition.benchmark_arguments
-        cwd = self.binaries_dir + "/performance"
+        cwd = f"{self.binaries_dir}/performance"
         return self.run(*argv, *definition_args, verbose=verbose, cwd=cwd,
                         env=self.definition.env, **kwargs)
 
@@ -193,12 +189,9 @@ class MavenBuild(Maven):
         be lost.
         """
         if not MavenBuild.is_build_dir(path):
-            raise ValueError("Not a valid MavenBuild path: {}".format(path))
+            raise ValueError(f"Not a valid MavenBuild path: {path}")
 
         return MavenBuild(path, definition=None)
 
     def __repr__(self):
-        return ("MavenBuild["
-                "build = {},"
-                "definition = {}]".format(self.build_dir,
-                                          self.definition))
+        return f"MavenBuild[build = {self.build_dir},definition = {self.definition}]"

@@ -35,8 +35,7 @@ class InMemoryKmsClient(pe.KmsClient):
         master_key_bytes = self.master_keys_map[master_key_identifier].encode(
             'utf-8')
         wrapped_key = b"".join([master_key_bytes, key_bytes])
-        result = base64.b64encode(wrapped_key)
-        return result
+        return base64.b64encode(wrapped_key)
 
     def unwrap_key(self, wrapped_key, master_key_identifier):
         """Not a secure cipher - just extract the key from

@@ -315,7 +315,7 @@ def test_filters_cutoff_exclusive_integer(tempdir, use_legacy_dataset):
                       .sort_values(by='index')
                       .reset_index(drop=True))
 
-    result_list = [x for x in map(int, result_df['integers'].values)]
+    result_list = list(map(int, result_df['integers'].values))
     assert result_list == [2, 3]
 
 
@@ -633,7 +633,7 @@ def test_partition_keys_with_underscores(tempdir, use_legacy_dataset):
 @parametrize_legacy_dataset
 def test_read_s3fs(s3_example_s3fs, use_legacy_dataset):
     fs, path = s3_example_s3fs
-    path = path + "/test.parquet"
+    path = f"{path}/test.parquet"
     table = pa.table({"a": [1, 2, 3]})
     _write_table(table, path, filesystem=fs)
 
@@ -647,7 +647,7 @@ def test_read_s3fs(s3_example_s3fs, use_legacy_dataset):
 @parametrize_legacy_dataset
 def test_read_directory_s3fs(s3_example_s3fs, use_legacy_dataset):
     fs, directory = s3_example_s3fs
-    path = directory + "/test.parquet"
+    path = f"{directory}/test.parquet"
     table = pa.table({"a": [1, 2, 3]})
     _write_table(table, path, filesystem=fs)
 
@@ -1025,7 +1025,7 @@ def test_dataset_read_pandas(tempdir, use_legacy_dataset):
         df.index = np.arange(i * size, (i + 1) * size)
         df.index.name = 'index'
 
-        path = dirpath / '{}.parquet'.format(i)
+        path = dirpath / f'{i}.parquet'
 
         table = pa.Table.from_pandas(df)
         _write_table(table, path)
@@ -1056,7 +1056,7 @@ def test_dataset_memory_map(tempdir, use_legacy_dataset):
     dirpath.mkdir()
 
     df = _test_dataframe(10, seed=0)
-    path = dirpath / '{}.parquet'.format(0)
+    path = dirpath / '0.parquet'
     table = pa.Table.from_pandas(df)
     _write_table(table, path, version='2.6')
 
@@ -1074,7 +1074,7 @@ def test_dataset_enable_buffered_stream(tempdir, use_legacy_dataset):
     dirpath.mkdir()
 
     df = _test_dataframe(10, seed=0)
-    path = dirpath / '{}.parquet'.format(0)
+    path = dirpath / '0.parquet'
     table = pa.Table.from_pandas(df)
     _write_table(table, path, version='2.6')
 
@@ -1097,7 +1097,7 @@ def test_dataset_enable_pre_buffer(tempdir, use_legacy_dataset):
     dirpath.mkdir()
 
     df = _test_dataframe(10, seed=0)
-    path = dirpath / '{}.parquet'.format(0)
+    path = dirpath / '0.parquet'
     table = pa.Table.from_pandas(df)
     _write_table(table, path, version='2.6')
 
@@ -1116,7 +1116,7 @@ def _make_example_multifile_dataset(base_path, nfiles=10, file_nrows=5):
     paths = []
     for i in range(nfiles):
         df = _test_dataframe(file_nrows, seed=i)
-        path = base_path / '{}.parquet'.format(i)
+        path = base_path / f'{i}.parquet'
 
         test_data.append(_write_table(df, path))
         paths.append(path)
@@ -1142,7 +1142,7 @@ def test_ignore_private_directories(tempdir, dir_prefix, use_legacy_dataset):
                                             file_nrows=5)
 
     # private directory
-    (dirpath / '{}staging'.format(dir_prefix)).mkdir()
+    (dirpath / f'{dir_prefix}staging').mkdir()
 
     dataset = pq.ParquetDataset(dirpath, use_legacy_dataset=use_legacy_dataset)
 
@@ -1338,7 +1338,7 @@ def _test_write_to_dataset_no_partitions(base_path,
 
     # Without partitions, append files to root_path
     n = 5
-    for i in range(n):
+    for _ in range(n):
         pq.write_to_dataset(output_table, base_path,
                             use_legacy_dataset=use_legacy_dataset,
                             filesystem=filesystem)
@@ -1508,7 +1508,7 @@ def _make_dataset_for_pickling(tempdir, use_legacy_dataset=False, N=100):
 
     num_groups = 3
     with pq.ParquetWriter(path, table.schema) as writer:
-        for i in range(num_groups):
+        for _ in range(num_groups):
             writer.write_table(table)
 
     reader = pq.ParquetFile(path)
@@ -1591,8 +1591,8 @@ def test_partitioned_dataset(tempdir, use_legacy_dataset):
 @parametrize_legacy_dataset
 def test_dataset_read_dictionary(tempdir, use_legacy_dataset):
     path = tempdir / "ARROW-3325-dataset"
-    t1 = pa.table([[util.rands(10) for i in range(5)] * 10], names=['f0'])
-    t2 = pa.table([[util.rands(10) for i in range(5)] * 10], names=['f0'])
+    t1 = pa.table([[util.rands(10) for _ in range(5)] * 10], names=['f0'])
+    t2 = pa.table([[util.rands(10) for _ in range(5)] * 10], names=['f0'])
     pq.write_to_dataset(t1, root_path=str(path),
                         use_legacy_dataset=use_legacy_dataset)
     pq.write_to_dataset(t2, root_path=str(path),
@@ -1736,7 +1736,7 @@ def test_parquet_dataset_partitions_piece_path_with_fsspec(
     dataset = pq.ParquetDataset(
         path, filesystem=filesystem, use_legacy_dataset=use_legacy_dataset)
     # ensure the piece path is also posix-style
-    expected = path + "/data.parquet"
+    expected = f"{path}/data.parquet"
     assert dataset.pieces[0].path == expected
 
 

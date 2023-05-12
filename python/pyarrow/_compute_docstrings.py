@@ -19,9 +19,9 @@
 Custom documentation additions for compute functions.
 """
 
-function_doc_additions = {}
 
-function_doc_additions["filter"] = """
+function_doc_additions = {
+    "filter": """
     Examples
     --------
     >>> import pyarrow as pa
@@ -40,9 +40,8 @@ function_doc_additions["filter"] = """
       null,
       "e"
     ]
-    """
-
-function_doc_additions["mode"] = """
+    """,
+    "mode": """
     Examples
     --------
     >>> import pyarrow as pa
@@ -53,4 +52,5 @@ function_doc_additions["mode"] = """
     <pyarrow.StructScalar: [('mode', 2), ('count', 5)]>
     >>> modes[1]
     <pyarrow.StructScalar: [('mode', 1), ('count', 2)]>
-    """
+    """,
+}

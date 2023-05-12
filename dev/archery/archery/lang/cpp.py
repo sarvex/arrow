@@ -153,30 +153,21 @@ class CppConfiguration:
         if self._build_type:
             return self._build_type
 
-        if self.with_fuzzing:
-            return "relwithdebinfo"
-
-        return "release"
+        return "relwithdebinfo" if self.with_fuzzing else "release"
 
     @property
     def cc(self):
         if self._cc:
             return self._cc
 
-        if self.with_fuzzing:
-            return "clang-{}".format(LLVM_VERSION)
-
-        return None
+        return f"clang-{LLVM_VERSION}" if self.with_fuzzing else None
 
     @property
     def cxx(self):
         if self._cxx:
             return self._cxx
 
-        if self.with_fuzzing:
-            return "clang++-{}".format(LLVM_VERSION)
-
-        return None
+        return f"clang++-{LLVM_VERSION}" if self.with_fuzzing else None
 
     def _gen_defs(self):
         if self.cxx_flags:
@@ -189,11 +180,7 @@ class CppConfiguration:
             yield ("BUILD_WARNING_LEVEL",
                    or_else(self.warn_level, "production"))
 
-        # if not ctx.quiet:
-        #   yield ("ARROW_VERBOSE_THIRDPARTY_BUILD", "ON")
-
-        maybe_prefix = self.install_prefix
-        if maybe_prefix:
+        if maybe_prefix := self.install_prefix:
             yield ("CMAKE_INSTALL_PREFIX", maybe_prefix)
 
         if self._package_prefix is not None:
@@ -252,8 +239,7 @@ class CppConfiguration:
         # Detect custom conda toolchain
         if self.use_conda:
             for d, v in [('CMAKE_AR', 'AR'), ('CMAKE_RANLIB', 'RANLIB')]:
-                v = os.environ.get(v)
-                if v:
+                if v := os.environ.get(v):
                     yield (d, v)
 
     @property
@@ -261,10 +247,7 @@ class CppConfiguration:
         if self._install_prefix:
             return self._install_prefix
 
-        if self.use_conda:
-            return os.environ.get("CONDA_PREFIX")
-
-        return None
+        return os.environ.get("CONDA_PREFIX") if self.use_conda else None
 
     @property
     def use_conda(self):
@@ -277,7 +260,7 @@ class CppConfiguration:
     @property
     def definitions(self):
         extras = list(self.cmake_extras) if self.cmake_extras else []
-        definitions = ["-D{}={}".format(d[0], d[1]) for d in self._gen_defs()]
+        definitions = [f"-D{d[0]}={d[1]}" for d in self._gen_defs()]
         return definitions + extras
 
     @property

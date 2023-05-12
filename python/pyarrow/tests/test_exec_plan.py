@@ -117,10 +117,7 @@ def test_joins(jointype, expected, use_threads, use_datasets):
     r = _perform_join(jointype, t1, "colA", t2, "colB",
                       use_threads=use_threads, coalesce_keys=True)
     r = r.combine_chunks()
-    if "right" in jointype:
-        r = r.sort_by("colB")
-    else:
-        r = r.sort_by("colA")
+    r = r.sort_by("colB") if "right" in jointype else r.sort_by("colA")
     assert r == expected
 
 

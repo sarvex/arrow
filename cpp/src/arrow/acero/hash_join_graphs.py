@@ -114,9 +114,7 @@ def organize_tests(filename):
     return tests;
 
 def construct_name(argname, argvalue):
-    if not argname:
-        return argvalue
-    return '%s: %s' % (argname, argvalue)
+    return argvalue if not argname else f'{argname}: {argvalue}'
 
 def plot_1d(test, argname, ax, label=None):
     x_axis = test.args[argname]
@@ -186,7 +184,7 @@ def main():
             ax = plt.subplot()
             plot_1d(test, sorted_argnames[0], ax)
         fig.set_size_inches(16, 9)
-        fig.savefig('%s.svg' % test_name, dpi=fig.dpi, bbox_inches='tight')
+        fig.savefig(f'{test_name}.svg', dpi=fig.dpi, bbox_inches='tight')
         plt.show()
 
 if __name__ == '__main__':

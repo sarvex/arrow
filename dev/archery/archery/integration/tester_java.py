@@ -42,17 +42,14 @@ _ARROW_TOOLS_JAR = os.environ.get(
     "ARROW_JAVA_INTEGRATION_JAR",
     os.path.join(
         ARROW_ROOT_DEFAULT,
-        "java/tools/target/arrow-tools-{}-"
-        "jar-with-dependencies.jar".format(_arrow_version),
+        f"java/tools/target/arrow-tools-{_arrow_version}-jar-with-dependencies.jar",
     ),
 )
 _ARROW_FLIGHT_JAR = os.environ.get(
     "ARROW_FLIGHT_JAVA_INTEGRATION_JAR",
     os.path.join(
         ARROW_ROOT_DEFAULT,
-        "java/flight/flight-integration-tests/target/"
-        "flight-integration-tests-{}-jar-with-dependencies.jar".format(
-            _arrow_version),
+        f"java/flight/flight-integration-tests/target/flight-integration-tests-{_arrow_version}-jar-with-dependencies.jar",
     ),
 )
 _ARROW_FLIGHT_SERVER = (
@@ -176,13 +173,9 @@ class JavaTester(Tester):
                 server.kill()
                 out, err = server.communicate()
                 raise RuntimeError(
-                    'Flight-Java server did not start properly, '
-                    'stdout:\n{}\n\nstderr:\n{}\n'.format(
-                        output + out.decode(), err.decode()
-                    )
+                    f'Flight-Java server did not start properly, stdout:\n{output + out.decode()}\n\nstderr:\n{err.decode()}\n'
                 )
-            port = int(output.split(':')[1])
-            yield port
+            yield int(output.split(':')[1])
         finally:
             server.kill()
             server.wait(5)

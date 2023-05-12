@@ -209,14 +209,14 @@ class _PyArrowColumn:
         if isinstance(column, pa.ChunkedArray):
             if column.num_chunks == 1:
                 column = column.chunk(0)
-            else:
-                if not allow_copy:
-                    raise RuntimeError(
-                        "Chunks will be combined and a copy is required which "
-                        "is forbidden by allow_copy=False"
-                    )
+            elif allow_copy:
                 column = column.combine_chunks()
 
+            else:
+                raise RuntimeError(
+                    "Chunks will be combined and a copy is required which "
+                    "is forbidden by allow_copy=False"
+                )
         self._allow_copy = allow_copy
 
         if pa.types.is_boolean(column.type):
@@ -309,18 +309,17 @@ class _PyArrowColumn:
             ts = dtype.unit[0]
             tz = dtype.tz if dtype.tz else ""
             f_string = "ts{ts}:{tz}".format(ts=ts, tz=tz)
-            return kind, bit_width, f_string, Endianness.NATIVE
         elif pa.types.is_dictionary(dtype):
             kind = DtypeKind.CATEGORICAL
             f_string = "L"
-            return kind, bit_width, f_string, Endianness.NATIVE
         else:
             kind, f_string = _PYARROW_KINDS.get(dtype, (None, None))
             if kind is None:
                 raise ValueError(
                     f"Data type {dtype} not supported by interchange protocol")
 
-            return kind, bit_width, f_string, Endianness.NATIVE
+
+        return kind, bit_width, f_string, Endianness.NATIVE
 
     @property
     def describe_categorical(self) -> CategoricalDescription:
@@ -384,8 +383,7 @@ class _PyArrowColumn:
         Note: Arrow uses -1 to indicate "unknown", but None seems cleaner.
         """
         arrow_null_count = self._col.null_count
-        n = arrow_null_count if arrow_null_count != -1 else None
-        return n
+        return arrow_null_count if arrow_null_count != -1 else None
 
     @property
     def metadata(self) -> Dict[str, Any]:
@@ -414,12 +412,10 @@ class _PyArrowColumn:
                 chunk_size += 1
 
             array = self._col
-            i = 0
             for start in range(0, chunk_size * n_chunks, chunk_size):
                 yield _PyArrowColumn(
                     array.slice(start, chunk_size), self._allow_copy
                 )
-                i += 1
         else:
             yield self
 
@@ -495,8 +491,7 @@ class _PyArrowColumn:
         # Define the dtype of the returned buffer
         dtype = (DtypeKind.BOOL, 1, "b", Endianness.NATIVE)
         array = self._col
-        buff = array.buffers()[0]
-        if buff:
+        if buff := array.buffers()[0]:
             return _PyArrowBuffer(buff), dtype
         else:
             raise NoBufferPresent(
@@ -520,8 +515,9 @@ class _PyArrowColumn:
         elif n == 3:
             # Define the dtype of the returned buffer
             dtype = self._col.type
-            if pa.types.is_large_string(dtype):
-                dtype = (DtypeKind.INT, 64, "l", Endianness.NATIVE)
-            else:
-                dtype = (DtypeKind.INT, 32, "i", Endianness.NATIVE)
+            dtype = (
+                (DtypeKind.INT, 64, "l", Endianness.NATIVE)
+                if pa.types.is_large_string(dtype)
+                else (DtypeKind.INT, 32, "i", Endianness.NATIVE)
+            )
             return _PyArrowBuffer(array.buffers()[1]), dtype

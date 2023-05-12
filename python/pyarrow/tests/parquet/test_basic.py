@@ -102,10 +102,8 @@ def test_set_dictionary_pagesize_limit(use_legacy_dataset):
 @pytest.mark.pandas
 @parametrize_legacy_dataset
 def test_chunked_table_write(use_legacy_dataset):
-    # ARROW-232
-    tables = []
     batch = pa.RecordBatch.from_pandas(alltypes_sample(size=10))
-    tables.append(pa.Table.from_batches([batch] * 3))
+    tables = [pa.Table.from_batches([batch] * 3)]
     df, _ = dataframe_with_lists()
     batch = pa.RecordBatch.from_pandas(df)
     tables.append(pa.Table.from_batches([batch] * 3))
@@ -257,7 +255,7 @@ def test_multiple_path_types(tempdir, use_legacy_dataset):
     tm.assert_frame_equal(df, df_read)
 
     # Test compatibility with plain string paths
-    path = str(tempdir) + 'zzz.parquet'
+    path = f'{str(tempdir)}zzz.parquet'
     df = pd.DataFrame({'x': np.arange(10, dtype=np.int64)})
     _write_table(df, path)
     table_read = _read_table(path, use_legacy_dataset=use_legacy_dataset)
@@ -780,7 +778,7 @@ def test_empty_row_groups(tempdir):
 
     num_groups = 3
     with pq.ParquetWriter(path, table.schema) as writer:
-        for i in range(num_groups):
+        for _ in range(num_groups):
             writer.write_table(table)
 
     reader = pq.ParquetFile(path)

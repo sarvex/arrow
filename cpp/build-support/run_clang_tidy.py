@@ -97,14 +97,10 @@ if __name__ == "__main__":
 
     exclude_globs = []
     if arguments.exclude_globs:
-        for line in open(arguments.exclude_globs):
-            exclude_globs.append(line.strip())
-
+        exclude_globs.extend(line.strip() for line in open(arguments.exclude_globs))
     linted_filenames = []
     for source_dir in arguments.source_dir:
-        for path in lintutils.get_sources(source_dir, exclude_globs):
-            linted_filenames.append(path)
-
+        linted_filenames.extend(iter(lintutils.get_sources(source_dir, exclude_globs)))
     if not arguments.quiet:
         msg = 'Tidying {}' if arguments.fix else 'Checking {}'
         print("\n".join(map(msg.format, linted_filenames)))

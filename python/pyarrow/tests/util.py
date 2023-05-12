@@ -104,9 +104,7 @@ def randdecimal(precision, scale):
     max_fractional_value = 10 ** scale - 1
     fractional = random.randint(0, max_fractional_value)
 
-    return decimal.Decimal(
-        '{}.{}'.format(whole, str(fractional).rjust(scale, '0'))
-    )
+    return decimal.Decimal(f"{whole}.{str(fractional).rjust(scale, '0')}")
 
 
 def random_ascii(length):
@@ -126,11 +124,10 @@ def make_dataframe():
     import pandas as pd
 
     N = 30
-    df = pd.DataFrame(
+    return pd.DataFrame(
         {col: np.random.randn(N) for col in string.ascii_uppercase[:4]},
-        index=pd.Index([rands(10) for _ in range(N)])
+        index=pd.Index([rands(10) for _ in range(N)]),
     )
-    return df
 
 
 def memory_leak_check(f, metric='rss', threshold=1 << 17, iterations=10,
@@ -198,9 +195,7 @@ def invoke_script(script_name, *args):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     python_file = os.path.join(dir_path, script_name)
 
-    cmd = [sys.executable, python_file]
-    cmd.extend(args)
-
+    cmd = [sys.executable, python_file, *args]
     subprocess.check_call(cmd, env=subprocess_env)
 
 
@@ -240,12 +235,7 @@ def disabled_gc():
 
 
 def _filesystem_uri(path):
-    # URIs on Windows must follow 'file:///C:...' or 'file:/C:...' patterns.
-    if os.name == 'nt':
-        uri = 'file:///{}'.format(path)
-    else:
-        uri = 'file://{}'.format(path)
-    return uri
+    return f'file:///{path}' if os.name == 'nt' else f'file://{path}'
 
 
 class FSProtocolClass:
@@ -276,7 +266,7 @@ class ProxyHandler(pyarrow.fs.FileSystemHandler):
         return NotImplemented
 
     def get_type_name(self):
-        return "proxy::" + self._fs.type_name
+        return f"proxy::{self._fs.type_name}"
 
     def normalize_path(self, path):
         return self._fs.normalize_path(path)
@@ -358,14 +348,13 @@ def signal_wakeup_fd(*, warn_on_full_buffer=False):
 def _ensure_minio_component_version(component, minimum_year):
     full_args = [component, '--version']
     with subprocess.Popen(full_args, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, encoding='utf-8') as proc:
+                              stderr=subprocess.PIPE, encoding='utf-8') as proc:
         if proc.wait(10) != 0:
             return False
         stdout = proc.stdout.read()
         pattern = component + r' version RELEASE\.(\d+)-.*'
-        version_match = re.search(pattern, stdout)
-        if version_match:
-            version_year = version_match.group(1)
+        if version_match := re.search(pattern, stdout):
+            version_year = version_match[1]
             return int(version_year) >= minimum_year
         else:
             raise FileNotFoundError(
@@ -422,7 +411,7 @@ def _configure_s3_limited_user(s3_server, policy):
 
         tempdir = s3_server['tempdir']
         host, port, access_key, secret_key = s3_server['connection']
-        address = '{}:{}'.format(host, port)
+        address = f'{host}:{port}'
 
         mcdir = os.path.join(tempdir, 'mc')
         if os.path.exists(mcdir):

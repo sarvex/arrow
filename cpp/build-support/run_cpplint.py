@@ -81,9 +81,10 @@ if __name__ == "__main__":
 
     linted_filenames = []
     for source_dir in arguments.source_dir:
-        for path in lintutils.get_sources(source_dir, exclude_globs):
-            linted_filenames.append(str(path))
-
+        linted_filenames.extend(
+            str(path)
+            for path in lintutils.get_sources(source_dir, exclude_globs)
+        )
     cmd = [
         arguments.cpplint_binary,
         '--verbose=2',
@@ -98,8 +99,7 @@ if __name__ == "__main__":
     if arguments.quiet:
         cmd.append('--quiet')
     else:
-        print("\n".join(map(lambda x: "Linting {}".format(x),
-                            linted_filenames)))
+        print("\n".join(map(lambda x: f"Linting {x}", linted_filenames)))
 
     # lint files in chunks: each invocation of cpplint will process 16 files
     chunks = lintutils.chunk(linted_filenames, 16)

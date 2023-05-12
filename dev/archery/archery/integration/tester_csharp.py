@@ -36,9 +36,7 @@ class CSharpTester(Tester):
     name = 'C#'
 
     def _run(self, json_path=None, arrow_path=None, command='validate'):
-        cmd = [_EXE_PATH]
-
-        cmd.extend(['--mode', command])
+        cmd = [_EXE_PATH, *['--mode', command]]
 
         if json_path is not None:
             cmd.extend(['-j', json_path])
@@ -58,13 +56,18 @@ class CSharpTester(Tester):
         return self._run(json_path, arrow_path, 'json-to-arrow')
 
     def stream_to_file(self, stream_path, file_path):
-        cmd = [_EXE_PATH]
-        cmd.extend(['--mode', 'stream-to-file', '-a', file_path])
-        cmd.extend(['<', stream_path])
+        cmd = [
+            _EXE_PATH,
+            *['--mode', 'stream-to-file', '-a', file_path],
+            *['<', stream_path],
+        ]
         self.run_shell_command(cmd)
 
     def file_to_stream(self, file_path, stream_path):
-        cmd = [_EXE_PATH]
-        cmd.extend(['--mode', 'file-to-stream'])
-        cmd.extend(['-a', file_path, '>', stream_path])
+        cmd = [
+            _EXE_PATH,
+            '--mode',
+            'file-to-stream',
+            *['-a', file_path, '>', stream_path],
+        ]
         self.run_shell_command(cmd)

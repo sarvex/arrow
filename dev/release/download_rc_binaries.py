@@ -52,11 +52,12 @@ class Downloader:
                     directories.append(resolved_path)
                 else:
                     files.append(resolved_path)
+
         files = []
         if prefix != '' and not prefix.endswith('/'):
             prefix += '/'
         directories = [prefix]
-        while len(directories) > 0:
+        while directories:
             directory = directories.pop()
             traverse(directory, files, directories)
         return files
@@ -104,7 +105,7 @@ class Downloader:
 
         dest_path = os.path.join(dest_dir, filename)
 
-        print("Downloading {} to {}".format(path, dest_path))
+        print(f"Downloading {path} to {dest_path}")
 
         url = f'{self.URL_ROOT}/{path}'
         self._download_url(url, dest_path)
@@ -137,7 +138,7 @@ class Downloader:
         cmd = ["curl", "--version"]
         out = subprocess.run(cmd, capture_output=True, check=True).stdout
         match = re.search(r"curl (\d+)\.(\d+)\.(\d+) ", out.decode())
-        return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        return int(match[1]), int(match[2]), int(match[3])
 
 
 class Artifactory(Downloader):
@@ -219,9 +220,7 @@ class GitHub(Downloader):
 def parallel_map_terminate_early(f, iterable, num_parallel):
     tasks = []
     with cf.ProcessPoolExecutor(num_parallel) as pool:
-        for v in iterable:
-            tasks.append(pool.submit(functools.partial(f, v)))
-
+        tasks.extend(pool.submit(functools.partial(f, v)) for v in iterable)
         for task in cf.as_completed(tasks):
             if task.exception() is not None:
                 e = task.exception()
@@ -255,9 +254,8 @@ def download_rc_binaries(version, rc_number, re_match=None, dest=None,
     for package_type in package_types:
         def is_target(path):
             match = version_pattern.search(path)
-            if not match:
-                return True
-            return match[0] == version
+            return True if not match else match[0] == version
+
         filter = is_target
 
         if package_type == 'jars':

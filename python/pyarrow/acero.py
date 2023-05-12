@@ -109,29 +109,22 @@ def _perform_join(join_type, left_operand, left_keys,
     if not isinstance(right_operand, (Table, ds.Dataset)):
         raise TypeError(f"Expected Table or Dataset, got {type(right_operand)}")
 
-    # Prepare left and right tables Keys to send them to the C++ function
-    left_keys_order = {}
     if not isinstance(left_keys, (tuple, list)):
         left_keys = [left_keys]
-    for idx, key in enumerate(left_keys):
-        left_keys_order[key] = idx
-
-    right_keys_order = {}
+    left_keys_order = {key: idx for idx, key in enumerate(left_keys)}
     if not isinstance(right_keys, (list, tuple)):
         right_keys = [right_keys]
-    for idx, key in enumerate(right_keys):
-        right_keys_order[key] = idx
-
+    right_keys_order = {key: idx for idx, key in enumerate(right_keys)}
     # By default expose all columns on both left and right table
     left_columns = left_operand.schema.names
     right_columns = right_operand.schema.names
 
     # Pick the join type
-    if join_type == "left semi" or join_type == "left anti":
+    if join_type in ["left semi", "left anti"]:
         right_columns = []
-    elif join_type == "right semi" or join_type == "right anti":
+    elif join_type in ["right semi", "right anti"]:
         left_columns = []
-    elif join_type == "inner" or join_type == "left outer":
+    elif join_type in ["inner", "left outer"]:
         right_columns = [
             col for col in right_columns if col not in right_keys_order
         ]
@@ -140,17 +133,16 @@ def _perform_join(join_type, left_operand, left_keys,
             col for col in left_columns if col not in left_keys_order
         ]
 
-    # Turn the columns to vectors of FieldRefs
-    # and set aside indices of keys.
-    left_column_keys_indices = {}
-    for idx, colname in enumerate(left_columns):
-        if colname in left_keys:
-            left_column_keys_indices[colname] = idx
-    right_column_keys_indices = {}
-    for idx, colname in enumerate(right_columns):
-        if colname in right_keys:
-            right_column_keys_indices[colname] = idx
-
+    left_column_keys_indices = {
+        colname: idx
+        for idx, colname in enumerate(left_columns)
+        if colname in left_keys
+    }
+    right_column_keys_indices = {
+        colname: idx
+        for idx, colname in enumerate(right_columns)
+        if colname in right_keys
+    }
     # Add the join node to the execplan
     if isinstance(left_operand, ds.Dataset):
         left_source = _dataset_to_decl(left_operand, use_threads=use_threads)

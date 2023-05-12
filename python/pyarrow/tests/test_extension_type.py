@@ -726,7 +726,7 @@ class PeriodType(pa.ExtensionType):
         return self._freq
 
     def __arrow_ext_serialize__(self):
-        return "freq={}".format(self.freq).encode()
+        return f"freq={self.freq}".encode()
 
     @classmethod
     def __arrow_ext_deserialize__(cls, storage_type, serialized):
@@ -864,7 +864,7 @@ def test_generic_ext_type_equality():
     period_type2 = PeriodType('D')
     period_type3 = PeriodType('H')
     assert period_type == period_type2
-    assert not period_type == period_type3
+    assert period_type != period_type3
 
 
 def test_generic_ext_type_register(registered_period_type):
@@ -1253,7 +1253,7 @@ def test_tensor_type_equality():
     tensor_type2 = pa.fixed_shape_tensor(pa.int8(), [2, 2, 3])
     tensor_type3 = pa.fixed_shape_tensor(pa.uint8(), [2, 2, 3])
     assert tensor_type == tensor_type2
-    assert not tensor_type == tensor_type3
+    assert tensor_type != tensor_type3
 
 
 @pytest.mark.pandas

@@ -200,8 +200,7 @@ def gdb_arrow(gdb):
     gdb.run_command(f"source {gdb_script}")
 
     lib_path_var = 'PATH' if sys.platform == 'win32' else 'LD_LIBRARY_PATH'
-    lib_path = os.environ.get(lib_path_var)
-    if lib_path:
+    if lib_path := os.environ.get(lib_path_var):
         # GDB starts the inferior process in a pristine shell, need
         # to propagate the library search path to find the Arrow DLL
         gdb.run_command(f"set env {lib_path_var} {lib_path}")

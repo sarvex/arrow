@@ -62,10 +62,10 @@ class Report:
         return url[:-4] if url.endswith('.git') else url
 
     def url(self, query):
-        return '{}/branches/all?query={}'.format(self.repo_url, query)
+        return f'{self.repo_url}/branches/all?query={query}'
 
     def branch_url(self, branch):
-        return '{}/tree/{}'.format(self.repo_url, branch)
+        return f'{self.repo_url}/tree/{branch}'
 
     def task_url(self, task):
         build_links = task.status().build_links
@@ -74,13 +74,7 @@ class Report:
         if not build_links and self._wait_for_task:
             time.sleep(self._wait_for_task)
             build_links = task.status(force_query=True).build_links
-        if build_links:
-            # show link to the actual build, some CI providers implement
-            # the statuses API others implement the checks API, retrieve any.
-            return build_links[0]
-        else:
-            # show link to the branch if no status build link was found.
-            return self.branch_url(task.branch)
+        return build_links[0] if build_links else self.branch_url(task.branch)
 
     @property
     @functools.lru_cache(maxsize=1)
@@ -112,20 +106,16 @@ class Report:
         """
         for task_name, task in sorted(self.job.tasks.items()):
             task_status = task.status()
-            row = [
+            yield [
                 task_name,
                 task_status.combined_state,
                 task_status.build_links,
                 self.branch_url(task.branch),
                 task.ci,
-                # We want this to be serialized as a dict instead
-                # of an orderedict.
-                {k: v for k, v in task.params.items()},
+                dict(task.params.items()),
                 task.template,
-                # Arrow repository commit
-                self.job.target.head
+                self.job.target.head,
             ]
-            yield row
 
 
 class ConsoleReport(Report):
@@ -155,7 +145,7 @@ class ConsoleReport(Report):
         line = self.HEADER.format(
             state=state.upper(),
             branch=branch,
-            content='uploaded {} / {}'.format(n_uploaded, n_expected)
+            content=f'uploaded {n_uploaded} / {n_expected}',
         )
         return click.style(line, fg=self.COLORS[state.lower()])
 
@@ -166,7 +156,7 @@ class ConsoleReport(Report):
             content='Artifacts'
         )
         delimiter = '-' * len(header)
-        return '{}\n{}'.format(header, delimiter)
+        return f'{header}\n{delimiter}'
 
     def artifact(self, state, pattern, asset):
         if asset is None:
@@ -229,19 +219,17 @@ class ReportUtils:
 
     @classmethod
     def send_message(cls, webhook, message):
-        resp = requests.post(webhook, json={
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                            "type": "mrkdwn",
-                            "text": message
+        return requests.post(
+            webhook,
+            json={
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": message},
                     }
-                }
-            ]
-        }
+                ]
+            },
         )
-        return resp
 
     @classmethod
     def send_email(cls, smtp_user, smtp_password, smtp_server, smtp_port,
@@ -324,9 +312,8 @@ class CommentReport(Report):
         url = 'https://github.com/{repo}/branches/all?query={branch}'
         sha = self.job.target.head
 
-        msg = 'Revision: {}\n\n'.format(sha)
-        msg += 'Submitted crossbow builds: [{repo} @ {branch}]'
-        msg += '({})\n'.format(url)
+        msg = f'Revision: {sha}\n\n' + 'Submitted crossbow builds: [{repo} @ {branch}]'
+        msg += f'({url})\n'
         msg += '\n|Task|Status|\n|----|------|'
 
         tasks = sorted(self.job.tasks.items(), key=operator.itemgetter(0))
@@ -342,8 +329,8 @@ class CommentReport(Report):
                     url=self.task_url(task)
                 )
             except KeyError:
-                badge = 'unsupported CI service `{}`'.format(task.ci)
+                badge = f'unsupported CI service `{task.ci}`'
 
-            msg += '\n|{}|{}|'.format(key, badge)
+            msg += f'\n|{key}|{badge}|'
 
         return msg.format(repo=self.crossbow_repo, branch=self.job.branch)

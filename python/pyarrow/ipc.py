@@ -128,8 +128,7 @@ def _get_legacy_format_default(use_legacy_format, options):
             "Can provide at most one of options and use_legacy_format")
     elif options:
         if not isinstance(options, IpcWriteOptions):
-            raise TypeError("expected IpcWriteOptions, got {}"
-                            .format(type(options)))
+            raise TypeError(f"expected IpcWriteOptions, got {type(options)}")
         return options
 
     metadata_version = MetadataVersion.V5
@@ -144,9 +143,7 @@ def _get_legacy_format_default(use_legacy_format, options):
 
 def _ensure_default_ipc_read_options(options):
     if options and not isinstance(options, IpcReadOptions):
-        raise TypeError(
-            "expected IpcReadOptions, got {}".format(type(options))
-        )
+        raise TypeError(f"expected IpcReadOptions, got {type(options)}")
     return options or IpcReadOptions()
 
 

@@ -47,8 +47,7 @@ pytestmark = pytest.mark.acero
 def table_source():
     table = pa.table({'a': [1, 2, 3], 'b': [4, 5, 6]})
     table_opts = TableSourceNodeOptions(table)
-    table_source = Declaration("table_source", options=table_opts)
-    return table_source
+    return Declaration("table_source", options=table_opts)
 
 
 def test_declaration():

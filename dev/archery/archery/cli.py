@@ -408,7 +408,7 @@ def benchmark_list(ctx, rev_or_path, src, preserve, output, cmake_extras,
     """ List benchmark suite.
     """
     with tmpdir(preserve=preserve) as root:
-        logger.debug("Running benchmark {}".format(rev_or_path))
+        logger.debug(f"Running benchmark {rev_or_path}")
 
         if language == "cpp":
             conf = CppBenchmarkRunner.default_configuration(
@@ -479,7 +479,7 @@ def benchmark_run(ctx, rev_or_path, src, preserve, output, cmake_extras,
     archery benchmark run --output=run.json
     """
     with tmpdir(preserve=preserve) as root:
-        logger.debug("Running benchmark {}".format(rev_or_path))
+        logger.debug(f"Running benchmark {rev_or_path}")
 
         if language == "cpp":
             conf = CppBenchmarkRunner.default_configuration(
@@ -608,8 +608,7 @@ def benchmark_diff(ctx, src, preserve, output, language, cmake_extras,
     archery --quiet benchmark diff WORKSPACE run.json > result.json
     """
     with tmpdir(preserve=preserve) as root:
-        logger.debug("Comparing {} (contender) with {} (baseline)"
-                     .format(contender, baseline))
+        logger.debug(f"Comparing {contender} (contender) with {baseline} (baseline)")
 
         if language == "cpp":
             conf = CppBenchmarkRunner.default_configuration(
@@ -697,9 +696,7 @@ def _format_comparisons_with_pandas(comparisons_json, no_counters,
 # Integration testing
 
 def _set_default(opt, default):
-    if opt is None:
-        return default
-    return opt
+    return default if opt is None else opt
 
 
 @archery.command(short_help="Execute protocol and Flight integration tests")
@@ -756,7 +753,7 @@ def integration(with_all=False, random_seed=12345, **args):
 
     enabled_languages = 0
     for lang in languages:
-        param = 'with_{}'.format(lang)
+        param = f'with_{lang}'
         if with_all:
             args[param] = with_all
 
@@ -766,9 +763,9 @@ def integration(with_all=False, random_seed=12345, **args):
     if gen_path:
         os.makedirs(gen_path, exist_ok=True)
         write_js_test_json(gen_path)
+    elif enabled_languages == 0:
+        raise Exception("Must enable at least 1 language to test")
     else:
-        if enabled_languages == 0:
-            raise Exception("Must enable at least 1 language to test")
         run_all_tests(**args)
 
 

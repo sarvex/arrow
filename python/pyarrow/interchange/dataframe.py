@@ -56,7 +56,7 @@ class _PyArrowDataFrame:
         # ``nan_as_null`` is a keyword intended for the consumer to tell the
         # producer to overwrite null values in the data with ``NaN`` (or
         # ``NaT``).
-        if nan_as_null is True:
+        if nan_as_null:
             raise RuntimeError(
                 "nan_as_null=True currently has no effect, "
                 "use the default nan_as_null=False"
@@ -94,9 +94,10 @@ class _PyArrowDataFrame:
         # The metadata for the data frame, as a dictionary with string keys.
         # Add schema metadata here (pandas metadata or custom metadata)
         if self._df.schema.metadata:
-            schema_metadata = {"pyarrow." + k.decode('utf8'): v.decode('utf8')
-                               for k, v in self._df.schema.metadata.items()}
-            return schema_metadata
+            return {
+                "pyarrow." + k.decode('utf8'): v.decode('utf8')
+                for k, v in self._df.schema.metadata.items()
+            }
         else:
             return {}
 
@@ -118,13 +119,12 @@ class _PyArrowDataFrame:
         """
         if isinstance(self._df, pa.RecordBatch):
             return 1
-        else:
-            # pyarrow.Table can have columns with different number
-            # of chunks so we take the number of chunks that
-            # .to_batches() returns as it takes the min chunk size
-            # of all the columns (to_batches is a zero copy method)
-            batches = self._df.to_batches()
-            return len(batches)
+        # pyarrow.Table can have columns with different number
+        # of chunks so we take the number of chunks that
+        # .to_batches() returns as it takes the min chunk size
+        # of all the columns (to_batches is a zero copy method)
+        batches = self._df.to_batches()
+        return len(batches)
 
     def column_names(self) -> Iterable[str]:
         """
@@ -192,26 +192,24 @@ class _PyArrowDataFrame:
             chunk_size = self.num_rows() // n_chunks
             if self.num_rows() % n_chunks != 0:
                 chunk_size += 1
-            if isinstance(self._df, pa.Table):
-                batches = self._df.to_batches(max_chunksize=chunk_size)
-            else:
-                batches = []
-                for start in range(0, chunk_size * n_chunks, chunk_size):
-                    batches.append(self._df.slice(start, chunk_size))
+            batches = (
+                self._df.to_batches(max_chunksize=chunk_size)
+                if isinstance(self._df, pa.Table)
+                else [
+                    self._df.slice(start, chunk_size)
+                    for start in range(0, chunk_size * n_chunks, chunk_size)
+                ]
+            )
             # In case when the size of the chunk is such that the resulting
             # list is one less chunk then n_chunks -> append an empty chunk
             if len(batches) == n_chunks - 1:
                 batches.append(pa.record_batch([[]], schema=self._df.schema))
-        # yields the chunks that the data is stored as
+        elif isinstance(self._df, pa.Table):
+            batches = self._df.to_batches()
         else:
-            if isinstance(self._df, pa.Table):
-                batches = self._df.to_batches()
-            else:
-                batches = [self._df]
+            batches = [self._df]
 
-        # Create an iterator of RecordBatches
-        iterator = [_PyArrowDataFrame(batch,
-                                      self._nan_as_null,
-                                      self._allow_copy)
-                    for batch in batches]
-        return iterator
+        return [
+            _PyArrowDataFrame(batch, self._nan_as_null, self._allow_copy)
+            for batch in batches
+        ]

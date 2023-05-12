@@ -173,10 +173,7 @@ def test_binary_conversion_with_json_options(tmpdir, use_threads):
 # In the meantime, lets just check the suffix
 def has_function(fns, ext_file, fn_name):
     suffix = f'{ext_file}#{fn_name}'
-    for fn in fns:
-        if fn.endswith(suffix):
-            return True
-    return False
+    return any(fn.endswith(suffix) for fn in fns)
 
 
 def test_get_supported_functions():

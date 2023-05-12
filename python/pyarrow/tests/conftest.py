@@ -81,7 +81,7 @@ class PyArrowConfig:
 
     def requires(self, group):
         if not self.is_enabled[group]:
-            pytest.skip('{} NOT enabled'.format(group))
+            pytest.skip(f'{group} NOT enabled')
 
 
 def pytest_configure(config):
@@ -93,8 +93,8 @@ def pytest_configure(config):
             "markers", mark,
         )
 
-        enable_flag = '--enable-{}'.format(mark)
-        disable_flag = '--disable-{}'.format(mark)
+        enable_flag = f'--enable-{mark}'
+        disable_flag = f'--disable-{mark}'
 
         is_enabled = (config.getoption(enable_flag) and not
                       config.getoption(disable_flag))
@@ -150,13 +150,11 @@ def s3_connection():
 def s3_server(s3_connection):
     host, port, access_key, secret_key = s3_connection
 
-    address = '{}:{}'.format(host, port)
-    env = os.environ.copy()
-    env.update({
+    address = f'{host}:{port}'
+    env = os.environ | {
         'MINIO_ACCESS_KEY': access_key,
-        'MINIO_SECRET_KEY': secret_key
-    })
-
+        'MINIO_SECRET_KEY': secret_key,
+    }
     with TemporaryDirectory() as tempdir:
         args = ['minio', '--compat', 'server', '--quiet', '--address',
                 address, tempdir]

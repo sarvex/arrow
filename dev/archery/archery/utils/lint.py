@@ -89,10 +89,7 @@ def cpp_linter(src, build_dir, clang_format=True, cpplint=True,
         yield LintResult.from_cmd(build.run("check-clang-tidy", check=False))
 
     if iwyu:
-        if iwyu_all:
-            iwyu_cmd = "iwyu-all"
-        else:
-            iwyu_cmd = "iwyu"
+        iwyu_cmd = "iwyu-all" if iwyu_all else "iwyu"
         yield LintResult.from_cmd(build.run(iwyu_cmd, check=False))
 
 
@@ -209,8 +206,7 @@ def python_linter(src, fix=False):
         # (https://github.com/hhatto/autopep8/issues/543)
         args += ['-j0', '--diff']
         args += sorted(files)
-        diff = autopep8.run_captured(*args)
-        if diff:
+        if diff := autopep8.run_captured(*args):
             print(diff.decode('utf8'))
             yield LintResult(success=False)
         else:
@@ -309,8 +305,7 @@ def python_numpydoc(symbols=None, allow_rules=None, disallow_rules=None):
         name = getattr(obj, '__name__', '')
         qualname = getattr(obj, '__qualname__', '')
         module = _get_module(obj, default='')
-        instance = getattr(obj, '__self__', '')
-        if instance:
+        if instance := getattr(obj, '__self__', ''):
             klass = instance.__class__.__name__
         else:
             klass = ''
@@ -326,20 +321,13 @@ def python_numpydoc(symbols=None, allow_rules=None, disallow_rules=None):
         click.echo(click.style(desc, bold=True, fg='yellow'))
         if cython_signature:
             qualname_with_signature = '.'.join([module, cython_signature])
-            click.echo(
-                click.style(
-                    '-> {}'.format(qualname_with_signature),
-                    fg='yellow'
-                )
-            )
+            click.echo(click.style(f'-> {qualname_with_signature}', fg='yellow'))
 
         for error in errors:
             number_of_violations += 1
             click.echo('{}: {}'.format(*error))
 
-    msg = 'Total number of docstring violations: {}'.format(
-        number_of_violations
-    )
+    msg = f'Total number of docstring violations: {number_of_violations}'
     click.echo()
     click.echo(click.style(msg, fg='red'))
 
@@ -365,9 +353,9 @@ def rat_linter(src, root):
 
     violations = list(report.validate(exclusion=exclusion))
     for violation in violations:
-        print("apache-rat license violation: {}".format(violation))
+        print(f"apache-rat license violation: {violation}")
 
-    yield LintResult(len(violations) == 0)
+    yield LintResult(not violations)
 
 
 def r_linter(src):

@@ -116,6 +116,3 @@ if __name__ == '__main__':
         pd.options.display.max_colwidth = 150
         print(diff[diff['diff'] < - 700])
         print(diff[diff['diff'] > 700])
-    else:
-        # TODO
-        pass

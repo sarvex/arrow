@@ -129,10 +129,7 @@ def test_direct_read_dictionary(use_legacy_dataset):
     repeats = 10
     nunique = 5
 
-    data = [
-        [util.rands(10) for i in range(nunique)] * repeats,
-
-    ]
+    data = [[util.rands(10) for _ in range(nunique)] * repeats]
     table = pa.table(data, names=['f0'])
 
     bio = pa.BufferOutputStream()
@@ -154,9 +151,7 @@ def test_direct_read_dictionary_subfield(use_legacy_dataset):
     repeats = 10
     nunique = 5
 
-    data = [
-        [[util.rands(10)] for i in range(nunique)] * repeats,
-    ]
+    data = [[[util.rands(10)] for _ in range(nunique)] * repeats]
     table = pa.table(data, names=['f0'])
 
     bio = pa.BufferOutputStream()
@@ -187,13 +182,12 @@ def test_dictionary_array_automatically_read(use_legacy_dataset):
 
     # Make a large dictionary, a little over 4MB of data
     dict_length = 4000
-    dict_values = pa.array([('x' * 1000 + '_{}'.format(i))
-                            for i in range(dict_length)])
+    dict_values = pa.array(['x' * 1000 + f'_{i}' for i in range(dict_length)])
 
     num_chunks = 10
     chunk_size = 100
     chunks = []
-    for i in range(num_chunks):
+    for _ in range(num_chunks):
         indices = np.random.randint(0, dict_length,
                                     size=chunk_size).astype(np.int32)
         chunks.append(pa.DictionaryArray.from_arrays(pa.array(indices),
@@ -262,7 +256,7 @@ def test_decimal_roundtrip_negative_scale(tempdir):
 @parametrize_legacy_dataset
 @pytest.mark.parametrize('dtype', [int, float])
 def test_single_pylist_column_roundtrip(tempdir, dtype, use_legacy_dataset):
-    filename = tempdir / 'single_{}_column.parquet'.format(dtype.__name__)
+    filename = tempdir / f'single_{dtype.__name__}_column.parquet'
     data = [pa.array(list(map(dtype, range(5))))]
     table = pa.Table.from_arrays(data, names=['a'])
     _write_table(table, filename)

@@ -150,11 +150,10 @@ def submit(obj, tasks, groups, params, job_prefix, config_path, arrow_version,
     queue.put(job, prefix=job_prefix)
 
     if no_push:
-        click.echo('Branches and commits created but not pushed: `{}`'
-                   .format(job.branch))
+        click.echo(f'Branches and commits created but not pushed: `{job.branch}`')
     else:
         queue.push()
-        click.echo('Pushed job identifier is: `{}`'.format(job.branch))
+        click.echo(f'Pushed job identifier is: `{job.branch}`')
 
 
 @crossbow.command()
@@ -205,10 +204,11 @@ def verify_release_candidate(obj, base_branch, create_pr,
         command = "@github-actions crossbow submit"
         verify_groups = ["verify-rc-source",
                          "verify-rc-binaries", "verify-rc-wheels"]
-        job_groups = ""
-        for flag, group in zip(verify_flags, verify_groups):
-            if flag:
-                job_groups += f" --group {group}"
+        job_groups = "".join(
+            f" --group {group}"
+            for flag, group in zip(verify_flags, verify_groups)
+            if flag
+        )
         response.create_comment(
             f"{command} {job_groups} --param " +
             f"release={version} --param rc={rc}")
@@ -502,27 +502,28 @@ def download_artifacts(obj, job_name, target_dir, dry_run, fetch,
 
     # download the assets while showing the job status
     def asset_callback(task_name, task, asset):
-        if asset is not None:
-            path = target_dir / task_name / asset.name
-            path.parent.mkdir(exist_ok=True)
-            if not dry_run:
-                import github3
-                max_n_retries = 5
-                n_retries = 0
-                while True:
-                    try:
-                        asset.download(path)
-                    except github3.exceptions.GitHubException as error:
-                        n_retries += 1
-                        if n_retries == max_n_retries:
-                            raise
-                        wait_seconds = 60
-                        click.echo(f'Failed to download {path}')
-                        click.echo(f'Retry #{n_retries} after {wait_seconds}s')
-                        click.echo(error)
-                        time.sleep(wait_seconds)
-                    else:
-                        break
+        if asset is None:
+            return
+        path = target_dir / task_name / asset.name
+        path.parent.mkdir(exist_ok=True)
+        if not dry_run:
+            import github3
+            max_n_retries = 5
+            n_retries = 0
+            while True:
+                try:
+                    asset.download(path)
+                except github3.exceptions.GitHubException as error:
+                    n_retries += 1
+                    if n_retries == max_n_retries:
+                        raise
+                    wait_seconds = 60
+                    click.echo(f'Failed to download {path}')
+                    click.echo(f'Retry #{n_retries} after {wait_seconds}s')
+                    click.echo(error)
+                    time.sleep(wait_seconds)
+                else:
+                    break
 
     click.echo('Downloading {}\'s artifacts.'.format(job_name))
     click.echo('Destination directory is {}'.format(target_dir))

@@ -511,7 +511,7 @@ def test_schema_equality_operators():
 
     # __eq__ and __ne__ do not check metadata
     assert sch1 == sch3
-    assert not sch1 != sch3
+    assert sch1 == sch3
 
     assert sch2 == sch4
 
@@ -620,7 +620,7 @@ def test_type_schema_pickling():
         if isinstance(f, pa.Field):
             fields.append(f)
         else:
-            fields.append(pa.field('_f{}'.format(i), f))
+            fields.append(pa.field(f'_f{i}', f))
 
     schema = pa.schema(fields, metadata={b'foo': b'bar'})
     roundtripped = pickle.loads(pickle.dumps(schema))

@@ -24,9 +24,9 @@ version = sys.argv[2]
 # {X+1}.Y.Z, X.{Y+1}.Z or X.Y.{Z+1}
 next_version = sys.argv[3]
 
-main_versions_path = dir_path + "/docs/source/_static/versions.json"
-r_versions_path = dir_path + "/r/pkgdown/assets/versions.json"
-r_html_path = dir_path + "/r/pkgdown/assets/versions.html"
+main_versions_path = f"{dir_path}/docs/source/_static/versions.json"
+r_versions_path = f"{dir_path}/r/pkgdown/assets/versions.json"
+r_html_path = f"{dir_path}/r/pkgdown/assets/versions.html"
 
 split_version = version.split(".")
 split_next_version = next_version.split(".")

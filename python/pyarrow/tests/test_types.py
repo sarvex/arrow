@@ -358,10 +358,7 @@ def test_tzinfo_to_string_errors():
             pa.lib.tzinfo_to_string(tz)
 
 
-if tzst:
-    timezones = tzst.timezones()
-else:
-    timezones = st.none()
+timezones = tzst.timezones() if tzst else st.none()
 
 
 @h.given(timezones)
@@ -781,10 +778,7 @@ def test_dictionary_ordered_equals():
 
 def test_types_hashable():
     many_types = get_many_types()
-    in_dict = {}
-    for i, type_ in enumerate(many_types):
-        assert hash(type_) == hash(type_)
-        in_dict[type_] = i
+    in_dict = {type_: i for i, type_ in enumerate(many_types)}
     assert len(in_dict) == len(many_types)
     for i, type_ in enumerate(many_types):
         assert in_dict[type_] == i
@@ -809,14 +803,12 @@ def test_types_weakref():
 
 
 def test_fields_hashable():
-    in_dict = {}
     fields = [pa.field('a', pa.int32()),
               pa.field('a', pa.int64()),
               pa.field('a', pa.int64(), nullable=False),
               pa.field('b', pa.int32()),
               pa.field('b', pa.int32(), nullable=False)]
-    for i, field in enumerate(fields):
-        in_dict[field] = i
+    in_dict = {field: i for i, field in enumerate(fields)}
     assert len(in_dict) == len(fields)
     for i, field in enumerate(fields):
         assert in_dict[field] == i
@@ -986,7 +978,7 @@ def test_key_value_metadata():
         pa.KeyValueMetadata(a=1)
 
     expected = [(b'a', b'A'), (b'b', b'B')]
-    result = [(k, v) for k, v in m3.items()]
+    result = list(m3.items())
     assert result == expected
     assert list(m3.items()) == expected
     assert list(m3.keys()) == [b'a', b'b']
@@ -1209,11 +1201,7 @@ def test_hashing(items):
         all(not a.equals(b) for i, a in enumerate(items) for b in items[:i])
     )
 
-    container = {}
-    for i, item in enumerate(items):
-        assert hash(item) == hash(item)
-        container[item] = i
-
+    container = {item: i for i, item in enumerate(items)}
     assert len(container) == len(items)
 
     for i, item in enumerate(items):

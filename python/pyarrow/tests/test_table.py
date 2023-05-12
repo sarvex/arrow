@@ -241,28 +241,16 @@ def test_chunked_array_iter():
 
 def test_chunked_array_equals():
     def eq(xarrs, yarrs):
-        if isinstance(xarrs, pa.ChunkedArray):
-            x = xarrs
-        else:
-            x = pa.chunked_array(xarrs)
-        if isinstance(yarrs, pa.ChunkedArray):
-            y = yarrs
-        else:
-            y = pa.chunked_array(yarrs)
+        x = xarrs if isinstance(xarrs, pa.ChunkedArray) else pa.chunked_array(xarrs)
+        y = yarrs if isinstance(yarrs, pa.ChunkedArray) else pa.chunked_array(yarrs)
         assert x.equals(y)
         assert y.equals(x)
         assert x == y
         assert x != str(y)
 
     def ne(xarrs, yarrs):
-        if isinstance(xarrs, pa.ChunkedArray):
-            x = xarrs
-        else:
-            x = pa.chunked_array(xarrs)
-        if isinstance(yarrs, pa.ChunkedArray):
-            y = yarrs
-        else:
-            y = pa.chunked_array(yarrs)
+        x = xarrs if isinstance(xarrs, pa.ChunkedArray) else pa.chunked_array(xarrs)
+        y = yarrs if isinstance(yarrs, pa.ChunkedArray) else pa.chunked_array(yarrs)
         assert not x.equals(y)
         assert not y.equals(x)
         assert x != y
@@ -1993,10 +1981,7 @@ def test_table_select():
 def test_table_group_by():
     def sorted_by_keys(d):
         # Ensure a guaranteed order of keys for aggregation results.
-        if "keys2" in d:
-            keys = tuple(zip(d["keys"], d["keys2"]))
-        else:
-            keys = d["keys"]
+        keys = tuple(zip(d["keys"], d["keys2"])) if "keys2" in d else d["keys"]
         sorted_keys = sorted(keys)
         sorted_d = {"keys": sorted(d["keys"])}
         for entry in d:

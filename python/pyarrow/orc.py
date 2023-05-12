@@ -134,17 +134,15 @@ class ORCFile:
         schema = self.schema
         names = []
         for col in columns:
-            if isinstance(col, Integral):
-                col = int(col)
-                if 0 <= col < len(schema):
-                    col = schema[col].name
-                    names.append(col)
-                else:
-                    raise ValueError("Column indices must be in 0 <= ind < %d,"
-                                     " got %d" % (len(schema), col))
-            else:
+            if not isinstance(col, Integral):
                 return columns
 
+            col = int(col)
+            if not 0 <= col < len(schema):
+                raise ValueError("Column indices must be in 0 <= ind < %d,"
+                                 " got %d" % (len(schema), col))
+            col = schema[col].name
+            names.append(col)
         return names
 
     def read_stripe(self, n, columns=None):
@@ -302,12 +300,11 @@ def read_table(source, columns=None, filesystem=None):
     if filesystem is not None:
         source = filesystem.open_input_file(path)
 
-    if columns is not None and len(columns) == 0:
-        result = ORCFile(source).read().select(columns)
-    else:
-        result = ORCFile(source).read(columns=columns)
-
-    return result
+    return (
+        ORCFile(source).read().select(columns)
+        if columns is not None and len(columns) == 0
+        else ORCFile(source).read(columns=columns)
+    )
 
 
 read_table.__doc__ = """

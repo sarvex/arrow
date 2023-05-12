@@ -27,11 +27,7 @@ from pyarrow.cffi import ffi
 
 
 def load_cgotest():
-    # XXX what about Darwin?
-    libext = 'so'
-    if os.name == 'nt':
-        libext = 'dll'
-
+    libext = 'dll' if os.name == 'nt' else 'so'
     ffi.cdef(
         """
         long long totalAllocated();
@@ -67,7 +63,7 @@ class BaseTestGoPython(unittest.TestCase):
 
     def run_gc(self):
         # Several Go GC runs can be required to run all finalizers
-        for i in range(5):
+        for _ in range(5):
             cgotest.runGC()
         gc.collect()
 

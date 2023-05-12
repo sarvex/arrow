@@ -24,11 +24,8 @@ import pandas as pd
 
 if __name__ == "__main__":
     # generate the test dataframe
-    data = {
-        "total_amount": list(),
-        "fare_amount": list()
-    }
-    for i in range(0, 500):
+    data = {"total_amount": [], "fare_amount": []}
+    for _ in range(0, 500):
         data['total_amount'].append(random.randint(1,11)*5)
         data['fare_amount'].append(random.randint(1,11)*3)
     df = pd.DataFrame(data)

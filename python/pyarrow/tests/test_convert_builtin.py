@@ -127,10 +127,10 @@ def test_infinite_iterator():
 
 def test_failing_iterator():
     with pytest.raises(ZeroDivisionError):
-        pa.array((1 // 0 for x in range(10)))
+        pa.array(1 // 0 for _ in range(10))
     # ARROW-17253
     with pytest.raises(ZeroDivisionError):
-        pa.array((1 // 0 for x in range(10)), size=10)
+        pa.array((1 // 0 for _ in range(10)), size=10)
 
 
 class ObjectWithOnlyGetitem:
@@ -160,7 +160,7 @@ def _as_deque(xs):
 
 def _as_dict_values(xs):
     # a dict values object is not a sequence, just a regular iterable
-    dct = {k: v for k, v in enumerate(xs)}
+    dct = dict(enumerate(xs))
     return dct.values()
 
 
@@ -597,13 +597,11 @@ def test_sequence_numpy_double(seq, np_scalar, pa_type, from_pandas):
     assert len(arr) == 6
     if from_pandas:
         assert arr.null_count == 3
-    else:
-        assert arr.null_count == 2
-    if from_pandas:
         # The NaN is skipped in type inference, otherwise it forces a
         # float64 promotion
         assert arr.type == pa_type
     else:
+        assert arr.null_count == 2
         assert arr.type == pa.float64()
 
     assert arr.to_pylist()[:4] == data[:4]
@@ -1021,10 +1019,9 @@ def test_sequence_timestamp_with_timezone(timezone, unit):
         multiplier = 10**(units.index(unit) * 3)
         if dt is None:
             return None
-        else:
-            # avoid float precision issues
-            ts = decimal.Decimal(str(dt.timestamp()))
-            return int(ts * multiplier)
+        # avoid float precision issues
+        ts = decimal.Decimal(str(dt.timestamp()))
+        return int(ts * multiplier)
 
     def expected_datetime_value(dt):
         if dt is None:

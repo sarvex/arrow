@@ -143,11 +143,8 @@ class build_ext(_build_ext):
 
         self.cmake_cxxflags = os.environ.get('PYARROW_CXXFLAGS', '')
 
-        if sys.platform == 'win32':
-            # Cannot do debug builds in Windows unless Python itself is a debug
-            # build
-            if not hasattr(sys, 'gettotalrefcount'):
-                self.build_type = 'release'
+        if sys.platform == 'win32' and not hasattr(sys, 'gettotalrefcount'):
+            self.build_type = 'release'
 
         self.with_gcs = strtobool(
             os.environ.get('PYARROW_WITH_GCS', '0'))
@@ -242,10 +239,10 @@ class build_ext(_build_ext):
         with changed_dir(build_temp):
             # Detect if we built elsewhere
             if os.path.isfile('CMakeCache.txt'):
-                cachefile = open('CMakeCache.txt', 'r')
-                cachedir = re.search('CMAKE_CACHEFILE_DIR:INTERNAL=(.*)',
-                                     cachefile.read()).group(1)
-                cachefile.close()
+                with open('CMakeCache.txt', 'r') as cachefile:
+                    cachedir = re.search(
+                        'CMAKE_CACHEFILE_DIR:INTERNAL=(.*)', cachefile.read()
+                    )[1]
                 if (cachedir != build_temp):
                     build_base = pjoin(saved_cwd, build_cmd.build_base)
                     print(f"-- Skipping build. Temp build {build_temp} does "
@@ -366,9 +363,7 @@ class build_ext(_build_ext):
             return True
         if name == '_cuda' and not self.with_cuda:
             return True
-        if name == 'gandiva' and not self.with_gandiva:
-            return True
-        return False
+        return name == 'gandiva' and not self.with_gandiva
 
     def _get_build_dir(self):
         # Get the package directory from build_py
@@ -381,18 +376,16 @@ class build_ext(_build_ext):
         return pjoin(self._get_build_dir(), filename)
 
     def get_ext_generated_cpp_source(self, name):
-        if sys.platform == 'win32':
-            head, tail = os.path.split(name)
-            return pjoin(head, tail + ".cpp")
-        else:
-            return pjoin(name + ".cpp")
+        if sys.platform != 'win32':
+            return pjoin(f"{name}.cpp")
+        head, tail = os.path.split(name)
+        return pjoin(head, f"{tail}.cpp")
 
     def get_ext_built_api_header(self, name):
-        if sys.platform == 'win32':
-            head, tail = os.path.split(name)
-            return pjoin(head, tail + "_api.h")
-        else:
-            return pjoin(name + "_api.h")
+        if sys.platform != 'win32':
+            return pjoin(f"{name}_api.h")
+        head, tail = os.path.split(name)
+        return pjoin(head, f"{tail}_api.h")
 
     def get_names(self):
         return self._found_names
@@ -432,10 +425,10 @@ def parse_git(root, **kwargs):
 def guess_next_dev_version(version):
     if version.exact:
         return version.format_with('{tag}')
-    else:
-        def guess_next_version(tag_version):
-            return default_version.replace('-SNAPSHOT', '')
-        return version.format_next_version(guess_next_version)
+    def guess_next_version(tag_version):
+        return default_version.replace('-SNAPSHOT', '')
+
+    return version.format_next_version(guess_next_version)
 
 
 with open('README.md') as f:
@@ -443,7 +436,7 @@ with open('README.md') as f:
 
 
 class BinaryDistribution(Distribution):
-    def has_ext_modules(foo):
+    def has_ext_modules(self):
         return True
 
 

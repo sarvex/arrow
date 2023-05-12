@@ -42,15 +42,20 @@ def setup_jvm():
             'POM': 'http://maven.apache.org/POM/4.0.0'
         }).text
     jar_path = os.path.join(
-        arrow_dir, 'java', 'tools', 'target',
-        'arrow-tools-{}-jar-with-dependencies.jar'.format(version))
+        arrow_dir,
+        'java',
+        'tools',
+        'target',
+        f'arrow-tools-{version}-jar-with-dependencies.jar',
+    )
     jar_path = os.getenv("ARROW_TOOLS_JAR", jar_path)
-    jar_path += ":{}".format(os.path.join(arrow_dir,
-                                          "java", "c/target/arrow-c-data-{}.jar".format(version)))
-    kwargs = {}
-    # This will be the default behaviour in jpype 0.8+
-    kwargs['convertStrings'] = False
-    jpype.startJVM(jpype.getDefaultJVMPath(), "-Djava.class.path=" + jar_path, **kwargs)
+    jar_path += ":{}".format(
+        os.path.join(arrow_dir, "java", f"c/target/arrow-c-data-{version}.jar")
+    )
+    kwargs = {'convertStrings': False}
+    jpype.startJVM(
+        jpype.getDefaultJVMPath(), f"-Djava.class.path={jar_path}", **kwargs
+    )
 
 
 class Bridge:

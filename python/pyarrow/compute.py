@@ -126,8 +126,6 @@ def _decorate_compute_function(wrapper, exposed_name, func, options_class):
     wrapper.__name__ = exposed_name
     wrapper.__qualname__ = exposed_name
 
-    doc_pieces = []
-
     # 1. One-line summary
     summary = cpp_doc.summary
     if not summary:
@@ -135,11 +133,8 @@ def _decorate_compute_function(wrapper, exposed_name, func, options_class):
         summary = ("Call compute function {!r} with the given {}"
                    .format(func.name, arg_str))
 
-    doc_pieces.append(f"{summary}.\n\n")
-
-    # 2. Multi-line description
-    description = cpp_doc.description
-    if description:
+    doc_pieces = [f"{summary}.\n\n"]
+    if description := cpp_doc.description:
         doc_pieces.append(f"{description}\n\n")
 
     doc_addition = _compute_docstrings.function_doc_additions.get(func.name)
@@ -157,27 +152,34 @@ def _decorate_compute_function(wrapper, exposed_name, func, options_class):
             arg_type = 'Array-like'
         else:
             arg_type = 'Array-like or scalar-like'
-        doc_pieces.append(f"{arg_name} : {arg_type}\n")
-        doc_pieces.append("    Argument to compute function.\n")
-
+        doc_pieces.extend(
+            (
+                f"{arg_name} : {arg_type}\n",
+                "    Argument to compute function.\n",
+            )
+        )
     # 3b. Compute function option values
     if options_class is not None:
-        options_class_doc = _scrape_options_class_doc(options_class)
-        if options_class_doc:
+        if options_class_doc := _scrape_options_class_doc(options_class):
             for p in options_class_doc.params:
                 doc_pieces.append(f"{p.name} : {p.type}\n")
-                for s in p.desc:
-                    doc_pieces.append(f"    {s}\n")
+                doc_pieces.extend(f"    {s}\n" for s in p.desc)
         else:
             warnings.warn(f"Options class {options_class.__name__} "
                           f"does not have a docstring", RuntimeWarning)
             options_sig = inspect.signature(options_class)
-            for p in options_sig.parameters.values():
-                doc_pieces.append(dedent("""\
+            doc_pieces.extend(
+                dedent(
+                    """\
                 {0} : optional
                     Parameter for {1} constructor. Either `options`
                     or `{0}` can be passed, but not both at the same time.
-                """.format(p.name, options_class.__name__)))
+                """.format(
+                        p.name, options_class.__name__
+                    )
+                )
+                for p in options_sig.parameters.values()
+            )
         doc_pieces.append(dedent(f"""\
             options : pyarrow.compute.{options_class.__name__}, optional
                 Alternative way of passing options.
@@ -203,8 +205,7 @@ def _get_options_class(func):
     try:
         return globals()[class_name]
     except KeyError:
-        warnings.warn("Python binding for {} not exposed"
-                      .format(class_name), RuntimeWarning)
+        warnings.warn(f"Python binding for {class_name} not exposed", RuntimeWarning)
         return None
 
 
@@ -262,11 +263,10 @@ def _make_generic_wrapper(func_name, func, options_class, arity):
 
 def _make_signature(arg_names, var_arg_names, options_class):
     from inspect import Parameter
-    params = []
-    for name in arg_names:
-        params.append(Parameter(name, Parameter.POSITIONAL_ONLY))
-    for name in var_arg_names:
-        params.append(Parameter(name, Parameter.VAR_POSITIONAL))
+    params = [Parameter(name, Parameter.POSITIONAL_ONLY) for name in arg_names]
+    params.extend(
+        Parameter(name, Parameter.VAR_POSITIONAL) for name in var_arg_names
+    )
     if options_class is not None:
         options_sig = inspect.signature(options_class)
         for p in options_sig.parameters.values():
@@ -286,8 +286,7 @@ def _make_signature(arg_names, var_arg_names, options_class):
 def _wrap_function(name, func):
     options_class = _get_options_class(func)
     arg_names = _get_arg_names(func)
-    has_vararg = arg_names and arg_names[-1].startswith('*')
-    if has_vararg:
+    if has_vararg := arg_names and arg_names[-1].startswith('*'):
         var_arg_names = [arg_names.pop().lstrip('*')]
     else:
         var_arg_names = []
@@ -420,10 +419,7 @@ def index(data, value, start=None, end=None, *, memory_pool=None):
         the index, or -1 if not found
     """
     if start is not None:
-        if end is not None:
-            data = data.slice(start, end - start)
-        else:
-            data = data.slice(start)
+        data = data.slice(start, end - start) if end is not None else data.slice(start)
     elif end is not None:
         data = data.slice(0, end)
 
@@ -679,19 +675,17 @@ def field(*name_or_index):
     <pyarrow.compute.Expression FieldRef.Nested(FieldRef.Name(a) ...
     """
     n = len(name_or_index)
-    if n == 1:
-        if isinstance(name_or_index[0], (str, int)):
-            return Expression._field(name_or_index[0])
-        elif isinstance(name_or_index[0], tuple):
-            return Expression._nested_field(name_or_index[0])
-        else:
-            raise TypeError(
-                "field reference should be str, multiple str, tuple or "
-                f"integer, got {type(name_or_index[0])}"
-            )
-    # In case of multiple strings not supplied in a tuple
-    else:
+    if n != 1:
         return Expression._nested_field(name_or_index)
+    if isinstance(name_or_index[0], (str, int)):
+        return Expression._field(name_or_index[0])
+    elif isinstance(name_or_index[0], tuple):
+        return Expression._nested_field(name_or_index[0])
+    else:
+        raise TypeError(
+            "field reference should be str, multiple str, tuple or "
+            f"integer, got {type(name_or_index[0])}"
+        )
 
 
 def scalar(value):

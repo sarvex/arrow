@@ -85,8 +85,7 @@ def check_options_class(cls, **attr_values):
     opts = cls()
 
     for name, values in attr_values.items():
-        assert getattr(opts, name) == values[0], \
-            "incorrect default value for " + name
+        assert getattr(opts, name) == values[0], f"incorrect default value for {name}"
         for v in values:
             setattr(opts, name, v)
             assert getattr(opts, name) == v, "failed setting value"
@@ -521,10 +520,7 @@ class BaseTestCSV(abc.ABC):
     def test_row_number_offset_in_errors(self):
         # Row numbers are only correctly counted in serial reads
         def format_msg(msg_format, row, *args):
-            if self.use_threads:
-                row_info = ""
-            else:
-                row_info = "Row #{}: ".format(row)
+            row_info = "" if self.use_threads else "Row #{}: ".format(row)
             return msg_format.format(row_info, *args)
 
         csv, _ = make_random_csv(4, 100, write_names=True)
@@ -554,8 +550,11 @@ class BaseTestCSV(abc.ABC):
 
         long_row = (b"this is a long row" * 15) + b",3\r\n"
         csv_bad_columns_long = csv + long_row
-        message_long = format_msg("{}Expected 4 columns, got 2: {} ...", 102,
-                                  long_row[0:96].decode("utf-8"))
+        message_long = format_msg(
+            "{}Expected 4 columns, got 2: {} ...",
+            102,
+            long_row[:96].decode("utf-8"),
+        )
         with pytest.raises(pa.ArrowInvalid, match=message_long):
             self.read_bytes(csv_bad_columns_long,
                             read_options=read_options,
@@ -592,8 +591,11 @@ class BaseTestCSV(abc.ABC):
                             convert_options=convert_options)
 
         csv_bad_columns_long = csv + long_row
-        message_long = format_msg("{}Expected 4 columns, got 2: {} ...", 101,
-                                  long_row[0:96].decode("utf-8"))
+        message_long = format_msg(
+            "{}Expected 4 columns, got 2: {} ...",
+            101,
+            long_row[:96].decode("utf-8"),
+        )
         with pytest.raises(pa.ArrowInvalid, match=message_long):
             self.read_bytes(csv_bad_columns_long,
                             read_options=read_options,
@@ -1346,14 +1348,13 @@ class BaseCSVTableRead(BaseTestCSV):
         csv_base, expected = make_random_csv(num_cols=2, num_rows=500)
         block_sizes = [11, 12, 13, 17, 37, 111]
         csvs = [csv_base, csv_base.rstrip(b'\r\n')]
-        for csv in csvs:
-            for block_size in block_sizes:
-                read_options = ReadOptions(block_size=block_size)
-                table = self.read_bytes(csv, read_options=read_options)
-                assert table.schema == expected.schema
-                if not table.equals(expected):
-                    # Better error output
-                    assert table.to_pydict() == expected.to_pydict()
+        for csv, block_size in itertools.product(csvs, block_sizes):
+            read_options = ReadOptions(block_size=block_size)
+            table = self.read_bytes(csv, read_options=read_options)
+            assert table.schema == expected.schema
+            if not table.equals(expected):
+                # Better error output
+                assert table.to_pydict() == expected.to_pydict()
 
     def test_stress_convert_options_blowup(self):
         # ARROW-6481: A convert_options with a very large number of columns
@@ -1363,7 +1364,7 @@ class BaseCSVTableRead(BaseTestCSV):
         except AttributeError:
             clock = time.time
         num_columns = 10000
-        col_names = ["K{}".format(i) for i in range(num_columns)]
+        col_names = [f"K{i}" for i in range(num_columns)]
         csv = make_empty_csv(col_names)
         t1 = clock()
         convert_options = ConvertOptions(
@@ -1428,13 +1429,9 @@ class BaseCSVTableRead(BaseTestCSV):
                 # KeyboardInterrupt didn't interrupt `read_bytes` above.
                 pass
 
-            if exc_info is not None:
-                # We managed to get `self.read_bytes` interrupted, see if it
-                # was actually interrupted inside Arrow C++ or in the Python
-                # scaffolding.
-                if exc_info.__context__ is not None:
-                    # Interrupted inside Arrow C++, we're satisfied now
-                    break
+            if exc_info is not None and exc_info.__context__ is not None:
+                # Interrupted inside Arrow C++, we're satisfied now
+                break
 
             # Increase workload size to get a better chance
             workload_size = workload_size * 3
@@ -1719,18 +1716,17 @@ class BaseStreamingCSVRead(BaseTestCSV):
         csv_base, expected = make_random_csv(num_cols=2, num_rows=500)
         block_sizes = [19, 21, 23, 26, 37, 111]
         csvs = [csv_base, csv_base.rstrip(b'\r\n')]
-        for csv in csvs:
-            for block_size in block_sizes:
-                # Need at least two lines for type inference
-                assert csv[:block_size].count(b'\n') >= 2
-                read_options = ReadOptions(block_size=block_size)
-                reader = self.open_bytes(
-                    csv, read_options=read_options)
-                table = reader.read_all()
-                assert table.schema == expected.schema
-                if not table.equals(expected):
-                    # Better error output
-                    assert table.to_pydict() == expected.to_pydict()
+        for csv, block_size in itertools.product(csvs, block_sizes):
+            # Need at least two lines for type inference
+            assert csv[:block_size].count(b'\n') >= 2
+            read_options = ReadOptions(block_size=block_size)
+            reader = self.open_bytes(
+                csv, read_options=read_options)
+            table = reader.read_all()
+            assert table.schema == expected.schema
+            if not table.equals(expected):
+                # Better error output
+                assert table.to_pydict() == expected.to_pydict()
 
     def test_batch_lifetime(self):
         gc.collect()

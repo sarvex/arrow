@@ -64,8 +64,7 @@ class VaultClient(pe.KmsClient):
                           data={'plaintext': base64.b64encode(key_bytes)})
         r.raise_for_status()
         r_dict = r.json()
-        wrapped_key = r_dict['data']['ciphertext']
-        return wrapped_key
+        return r_dict['data']['ciphertext']
 
     def unwrap_key(self, wrapped_key, master_key_identifier):
         """Call Vault to unwrap wrapped_key with key
@@ -79,8 +78,7 @@ class VaultClient(pe.KmsClient):
         r.raise_for_status()
         r_dict = r.json()
         plaintext = r_dict['data']['plaintext']
-        key_bytes = base64.b64decode(plaintext)
-        return key_bytes
+        return base64.b64decode(plaintext)
 
 
 def parquet_write_read_with_vault(parquet_filename):

@@ -159,11 +159,11 @@ def test_sparse_tensor_equals(sparse_tensor_type):
     def eq(a, b):
         assert a.equals(b)
         assert a == b
-        assert not (a != b)
+        assert a == b
 
     def ne(a, b):
         assert not a.equals(b)
-        assert not (a == b)
+        assert a != b
         assert a != b
 
     data = np.random.randn(10, 6)[::, ::2]

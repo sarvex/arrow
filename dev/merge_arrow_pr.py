@@ -89,7 +89,7 @@ def run_cmd(cmd):
         output = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         # this avoids hiding the stdout / stderr of failed processes
-        print('Command failed: %s' % cmd)
+        print(f'Command failed: {cmd}')
         print('With output:')
         print('--------------')
         print(e.output)
@@ -145,8 +145,7 @@ class JiraIssue(object):
         unreleased_versions = [x for x in all_versions
                                if not x.raw['released']]
 
-        mainline_versions = self._filter_mainline_versions(unreleased_versions)
-        return mainline_versions
+        return self._filter_mainline_versions(unreleased_versions)
 
     def _filter_mainline_versions(self, versions):
         if self.project == 'PARQUET':
@@ -160,9 +159,8 @@ class JiraIssue(object):
         fields = self.issue.fields
         cur_status = fields.status.name
 
-        if cur_status == "Resolved" or cur_status == "Closed":
-            self.cmd.fail("JIRA issue %s already has status '%s'"
-                          % (self.jira_id, cur_status))
+        if cur_status in ["Resolved", "Closed"]:
+            self.cmd.fail(f"JIRA issue {self.jira_id} already has status '{cur_status}'")
 
         resolve = [x for x in self.jira_con.transitions(self.jira_id)
                    if x['name'] == "Resolve Issue"][0]
@@ -171,20 +169,21 @@ class JiraIssue(object):
         # point releases
         fix_versions = [v.raw for v in self.jira_con.project_versions(
             self.project) if v.name == fix_version]
-        fix_version_names = set(x['name'] for x in fix_versions)
+        fix_version_names = {x['name'] for x in fix_versions}
         for version in self.current_fix_versions:
             major, minor, patch = version.name.split('.')
             if patch != '0' and version.name not in fix_version_names:
                 fix_versions.append(version.raw)
 
         if DEBUG:
-            print("JIRA issue %s untouched -> %s" %
-                  (self.jira_id, [v["name"] for v in fix_versions]))
+            print(
+                f'JIRA issue {self.jira_id} untouched -> {[v["name"] for v in fix_versions]}'
+            )
         else:
             self.jira_con.transition_issue(self.jira_id, resolve["id"],
                                            comment=comment,
                                            fixVersions=fix_versions)
-            print("Successfully resolved %s!" % (self.jira_id))
+            print(f"Successfully resolved {self.jira_id}!")
 
         self.issue = self.jira_con.issue(self.jira_id)
         self.show()
@@ -201,8 +200,7 @@ class JiraIssue(object):
         except Exception:
             # If no comment found or other issues ignore
             return None
-        matches = MIGRATION_COMMENT_REGEX.search(last_jira_comment)
-        if matches:
+        if matches := MIGRATION_COMMENT_REGEX.search(last_jira_comment):
             values = matches.groupdict()
             return "GH-" + values['issue_id']
 
@@ -251,17 +249,17 @@ class GitHubIssue(object):
         cur_status = self.issue["state"]
 
         if cur_status == "closed":
-            self.cmd.fail("GitHub issue %s already has status '%s'"
-                          % (self.github_id, cur_status))
+            self.cmd.fail(
+                f"GitHub issue {self.github_id} already has status '{cur_status}'"
+            )
 
         if DEBUG:
-            print("GitHub issue %s untouched -> %s" %
-                  (self.github_id, fix_version))
+            print(f"GitHub issue {self.github_id} untouched -> {fix_version}")
         else:
             self.github_api.assign_milestone(self.github_id, fix_version)
             if f"Closes: #{self.github_id}" not in pr_body:
                 self.github_api.close_issue(self.github_id, comment)
-            print("Successfully resolved %s!" % (self.github_id))
+            print(f"Successfully resolved {self.github_id}!")
 
         self.issue = self.github_api.get_issue_data(self.github_id)
         self.show()
@@ -355,8 +353,7 @@ class GitHubAPI(object):
         self.headers = headers
 
     def get_milestones(self):
-        return get_json("%s/milestones" % (self.github_api, ),
-                        headers=self.headers)
+        return get_json(f"{self.github_api}/milestones", headers=self.headers)
 
     def get_milestone_number(self, version):
         return next((
@@ -364,20 +361,18 @@ class GitHubAPI(object):
         ), None)
 
     def get_issue_data(self, number):
-        return get_json("%s/issues/%s" % (self.github_api, number),
-                        headers=self.headers)
+        return get_json(f"{self.github_api}/issues/{number}", headers=self.headers)
 
     def get_pr_data(self, number):
-        return get_json("%s/pulls/%s" % (self.github_api, number),
-                        headers=self.headers)
+        return get_json(f"{self.github_api}/pulls/{number}", headers=self.headers)
 
     def get_pr_commits(self, number):
-        return get_json("%s/pulls/%s/commits" % (self.github_api, number),
-                        headers=self.headers)
+        return get_json(
+            f"{self.github_api}/pulls/{number}/commits", headers=self.headers
+        )
 
     def get_branches(self):
-        return get_json("%s/branches" % (self.github_api),
-                        headers=self.headers)
+        return get_json(f"{self.github_api}/branches", headers=self.headers)
 
     def close_issue(self, number, comment):
         issue_url = f'{self.github_api}/issues/{number}'
@@ -476,7 +471,7 @@ class PullRequest(object):
         except KeyError:
             pprint.pprint(self._pr_data)
             raise
-        self.description = "%s/%s" % (self.user_login, self.base_ref)
+        self.description = f"{self.user_login}/{self.base_ref}"
 
         self.issue = self._get_issue()
 
@@ -506,13 +501,11 @@ class PullRequest(object):
         if self.title.startswith("MINOR:"):
             return None
 
-        m = self.GITHUB_PR_TITLE_PATTERN.search(self.title)
-        if m:
+        if m := self.GITHUB_PR_TITLE_PATTERN.search(self.title):
             github_id = m.group(1)
             return GitHubIssue(self._github_api, github_id, self.cmd)
 
-        m = self.JIRA_UNSUPPORTED_ARROW.search(self.title)
-        if m:
+        if m := self.JIRA_UNSUPPORTED_ARROW.search(self.title):
             old_jira_id = m.group(1)
             jira_issue = JiraIssue(self.con, old_jira_id, 'ARROW', self.cmd)
             self.cmd.fail("PR titles with ARROW- prefixed tickets on JIRA "
@@ -521,8 +514,7 @@ class PullRequest(object):
                           f"{jira_issue.github_issue_id()}")
 
         for project, regex in self.JIRA_PR_TITLE_REGEXEN:
-            m = regex.search(self.title)
-            if m:
+            if m := regex.search(self.title):
                 jira_id = m.group(1)
                 return JiraIssue(self.con, jira_id, project, self.cmd)
 
@@ -545,6 +537,7 @@ class PullRequest(object):
             name = author['name']
             email = author['email']
             return f'{name} <{email}>'
+
         commit_authors = [format_commit_author(commit) for commit in commits]
         co_authored_by_re = re.compile(
             r'^Co-authored-by:\s*(.*)', re.MULTILINE)
@@ -552,6 +545,7 @@ class PullRequest(object):
         def extract_co_authors(commit):
             message = commit['commit']['message']
             return co_authored_by_re.findall(message)
+
         commit_co_authors = []
         for commit in commits:
             commit_co_authors.extend(extract_co_authors(commit))
@@ -586,12 +580,12 @@ class PullRequest(object):
 
         authors = ("Authored-by:" if len(distinct_other_authors) == 0
                    else "Lead-authored-by:")
-        authors += " %s" % primary_author
+        authors += f" {primary_author}"
         if len(distinct_authors) > 0:
-            authors += "\n" + "\n".join(["Co-authored-by: %s" % a
-                                         for a in distinct_other_authors])
-        authors += "\n" + "Signed-off-by: %s <%s>" % (committer_name,
-                                                      committer_email)
+            authors += "\n" + "\n".join(
+                [f"Co-authored-by: {a}" for a in distinct_other_authors]
+            )
+        authors += ("\n" + f"Signed-off-by: {committer_name} <{committer_email}>")
         commit_message_chunks.append(authors)
 
         commit_message = "\n\n".join(commit_message_chunks)
@@ -619,8 +613,8 @@ class PullRequest(object):
                 self.cmd.fail(f'Failed to merge pull request: {message}')
             merge_hash = result['sha']
 
-        print("Pull request #%s merged!" % self.number)
-        print("Merge hash: %s" % merge_hash)
+        print(f"Pull request #{self.number} merged!")
+        print(f"Merge hash: {merge_hash}")
 
 
 def get_primary_author(cmd, distinct_authors):
@@ -636,7 +630,7 @@ def get_primary_author(cmd, distinct_authors):
 
         if author_pat.match(primary_author):
             break
-        print('Bad author "{}", please try again'.format(primary_author))
+        print(f'Bad author "{primary_author}", please try again')
 
     # When primary author is specified manually, de-dup it from
     # author list and put it at the head of author list.
@@ -651,8 +645,7 @@ def prompt_for_fix_version(cmd, issue, maintenance_branches=()):
         maintenance_branches=maintenance_branches
     )
 
-    issue_fix_version = cmd.prompt("Enter fix version [%s]: "
-                                   % default_fix_version)
+    issue_fix_version = cmd.prompt(f"Enter fix version [{default_fix_version}]: ")
     if issue_fix_version == "":
         issue_fix_version = default_fix_version
     issue_fix_version = issue_fix_version.strip()
@@ -669,12 +662,8 @@ def load_configuration():
 
 
 def get_credentials(cmd):
-    token = None
-
     config = load_configuration()
-    if "jira" in config.sections():
-        token = config["jira"].get("token")
-
+    token = config["jira"].get("token") if "jira" in config.sections() else None
     # Fallback to environment variables
     if not token:
         token = os.environ.get("APACHE_JIRA_TOKEN")
@@ -719,16 +708,16 @@ def cli():
     pr = PullRequest(cmd, github_api, ORG_NAME, jira_con, pr_num)
 
     if pr.is_merged:
-        print("Pull request %s has already been merged" % pr_num)
+        print(f"Pull request {pr_num} has already been merged")
         sys.exit(0)
 
     if not pr.is_mergeable:
-        print("Pull request %s is not mergeable in its current form" % pr_num)
+        print(f"Pull request {pr_num} is not mergeable in its current form")
         sys.exit(1)
 
     pr.show()
 
-    cmd.continue_maybe("Proceed with merging pull request #%s?" % pr_num)
+    cmd.continue_maybe(f"Proceed with merging pull request #{pr_num}?")
 
     pr.merge()
 

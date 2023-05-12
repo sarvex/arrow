@@ -101,16 +101,11 @@ class Issue:
 
     @property
     def project(self):
-        if isinstance(self.key, int):
-            return 'GH'
-        return self.key.split('-')[0]
+        return 'GH' if isinstance(self.key, int) else self.key.split('-')[0]
 
     @property
     def number(self):
-        if isinstance(self.key, str):
-            return int(self.key.split('-')[1])
-        else:
-            return self.key
+        return int(self.key.split('-')[1]) if isinstance(self.key, str) else self.key
 
     @cached_property
     def is_pr(self):
@@ -208,9 +203,7 @@ class CommitTitle:
     def parse(cls, headline):
         matches = _TITLE_REGEX.match(headline)
         if matches is None:
-            warnings.warn(
-                "Unable to parse commit message `{}`".format(headline)
-            )
+            warnings.warn(f"Unable to parse commit message `{headline}`")
             return CommitTitle(headline)
 
         values = matches.groupdict()
@@ -229,10 +222,10 @@ class CommitTitle:
     def to_string(self, with_issue=True, with_components=True):
         out = ""
         if with_issue and self.issue:
-            out += "{}: ".format(self.issue)
+            out += f"{self.issue}: "
         if with_components and self.components:
             for component in self.components:
-                out += "[{}]".format(component)
+                out += f"[{component}]"
             out += " "
         out += self.summary
         return out
@@ -257,7 +250,7 @@ class Commit:
 
     @property
     def url(self):
-        return 'https://github.com/apache/arrow/commit/{}'.format(self.hexsha)
+        return f'https://github.com/apache/arrow/commit/{self.hexsha}'
 
     @property
     def title(self):
@@ -266,8 +259,7 @@ class Commit:
 
 class Release:
 
-    def __new__(self, version, repo=None, github_token=None,
-                issue_tracker=None):
+    def __new__(cls, version, repo=None, github_token=None, issue_tracker=None):
         if isinstance(version, str):
             version = Version.parse(version)
         elif not isinstance(version, Version):
@@ -275,10 +267,7 @@ class Release:
 
         # decide the type of the release based on the version number
         if version.patch == 0:
-            if version.minor == 0:
-                klass = MajorRelease
-            elif version.major == 0:
-                # handle minor releases before 1.0 as major releases
+            if version.minor == 0 or version.major == 0:
                 klass = MajorRelease
             else:
                 klass = MinorRelease
@@ -379,12 +368,7 @@ class Release:
         """
         All commits applied between two versions.
         """
-        if self.previous is None:
-            # first release
-            lower = ''
-        else:
-            lower = self.repo.tags[self.previous.tag]
-
+        lower = '' if self.previous is None else self.repo.tags[self.previous.tag]
         if self.version.released:
             try:
                 upper = self.repo.tags[self.tag]
@@ -494,9 +478,7 @@ class Release:
         issue_commit_pairs.extend(curation.parquet)
 
         # jira tickets without patches
-        for issue in curation.nopatch:
-            issue_commit_pairs.append((issue, None))
-
+        issue_commit_pairs.extend((issue, None) for issue in curation.nopatch)
         # organize issues into categories
         issue_types = {
             'Bug': 'Bug Fixes',

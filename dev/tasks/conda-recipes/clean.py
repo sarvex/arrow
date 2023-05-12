@@ -119,10 +119,9 @@ def builds_to_delete(platform: str, to_delete: Set[str]) -> int:
 
 if __name__ == "__main__":
     to_delete = set()
-    num_builds = 0
-    for platform in PLATFORMS:
-        num_builds += builds_to_delete(platform, to_delete)
-
+    num_builds = sum(
+        builds_to_delete(platform, to_delete) for platform in PLATFORMS
+    )
     to_delete = sorted(to_delete)
 
     print(f"{len(to_delete)} builds may be deleted out of {num_builds}")

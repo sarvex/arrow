@@ -96,10 +96,7 @@ def test_exported_functions():
         arity = desc['arity']
         if arity == 0:
             continue
-        if arity is Ellipsis:
-            args = [object()] * 3
-        else:
-            args = [object()] * arity
+        args = [object()] * 3 if arity is Ellipsis else [object()] * arity
         with pytest.raises(TypeError,
                            match="Got unexpected argument type "
                                  "<class 'object'> for compute function"):
@@ -528,17 +525,16 @@ def test_trim():
 
 def test_slice_compatibility():
     arr = pa.array(["", "𝑓", "𝑓ö", "𝑓öõ", "𝑓öõḍ", "𝑓öõḍš"])
-    for start in range(-6, 6):
-        for stop in range(-6, 6):
-            for step in [-3, -2, -1, 1, 2, 3]:
-                expected = pa.array([k.as_py()[start:stop:step]
-                                     for k in arr])
-                result = pc.utf8_slice_codeunits(
-                    arr, start=start, stop=stop, step=step)
-                assert expected.equals(result)
-                # Positional options
-                assert pc.utf8_slice_codeunits(arr,
-                                               start, stop, step) == result
+    for start, stop in itertools.product(range(-6, 6), range(-6, 6)):
+        for step in [-3, -2, -1, 1, 2, 3]:
+            expected = pa.array([k.as_py()[start:stop:step]
+                                 for k in arr])
+            result = pc.utf8_slice_codeunits(
+                arr, start=start, stop=stop, step=step)
+            assert expected.equals(result)
+            # Positional options
+            assert pc.utf8_slice_codeunits(arr,
+                                           start, stop, step) == result
 
 
 def test_binary_slice_compatibility():
@@ -844,14 +840,14 @@ def test_generated_signatures():
 # implementation.
 @lru_cache()
 def find_new_unicode_codepoints():
-    new = set()
     characters = [chr(c) for c in range(0x80, 0x11000)
                   if not (0xD800 <= c < 0xE000)]
     is_printable = pc.utf8_is_printable(pa.array(characters)).to_pylist()
-    for i, c in enumerate(characters):
-        if is_printable[i] != c.isprintable():
-            new.add(ord(c))
-    return new
+    return {
+        ord(c)
+        for i, c in enumerate(characters)
+        if is_printable[i] != c.isprintable()
+    }
 
 
 # Python claims there are not alpha, not sure why, they are in
@@ -946,7 +942,7 @@ codepoints_ignore = {
                                            'is_space', 'is_upper', ])
 @pytest.mark.parametrize('variant', ['ascii', 'utf8'])
 def test_string_py_compat_boolean(function_name, variant):
-    arrow_name = variant + "_" + function_name
+    arrow_name = f"{variant}_{function_name}"
     py_name = function_name.replace('_', '')
     ignore = codepoints_ignore.get(function_name, set()) | \
         find_new_unicode_codepoints()
@@ -956,10 +952,10 @@ def test_string_py_compat_boolean(function_name, variant):
         # the issues we know of, we skip
         if i in ignore:
             continue
-        # Compare results with the equivalent Python predicate
-        # (except "is_space" where functions are known to be incompatible)
-        c = chr(i)
         if hasattr(pc, arrow_name) and function_name != 'is_space':
+            # Compare results with the equivalent Python predicate
+            # (except "is_space" where functions are known to be incompatible)
+            c = chr(i)
             ar = pa.array([c])
             arrow_func = getattr(pc, arrow_name)
             assert arrow_func(ar)[0].as_py() == getattr(c, py_name)()
@@ -1878,8 +1874,8 @@ def test_strftime():
 
         # Default format plus timezone
         tsa = pa.array(ts, type=pa.timestamp("s", timezone))
-        result = pc.strftime(tsa, options=pc.StrftimeOptions(fmt + "%Z"))
-        expected = pa.array(ts.strftime(fmt + "%Z"))
+        result = pc.strftime(tsa, options=pc.StrftimeOptions(f"{fmt}%Z"))
+        expected = pa.array(ts.strftime(f"{fmt}%Z"))
         assert result.equals(expected)
 
         # Pandas %S is equivalent to %S in arrow for unit="s"
@@ -1915,11 +1911,11 @@ def test_strftime():
 
     assert result.equals(expected)
     with pytest.raises(pa.ArrowInvalid,
-                       match="Timezone not present, cannot convert to string"):
-        pc.strftime(tsa, options=pc.StrftimeOptions(fmt + "%Z"))
+                           match="Timezone not present, cannot convert to string"):
+        pc.strftime(tsa, options=pc.StrftimeOptions(f"{fmt}%Z"))
     with pytest.raises(pa.ArrowInvalid,
-                       match="Timezone not present, cannot convert to string"):
-        pc.strftime(tsa, options=pc.StrftimeOptions(fmt + "%z"))
+                           match="Timezone not present, cannot convert to string"):
+        pc.strftime(tsa, options=pc.StrftimeOptions(f"{fmt}%z"))
 
 
 def _check_datetime_components(timestamps, timezone=None):
@@ -2022,9 +2018,6 @@ def test_extract_datetime_components():
                   "2008-12-28T00:00:00.0",
                   "2008-12-29T00:00:00.0",
                   "2012-01-01T01:02:03.0"]
-    timezones = ["UTC", "US/Central", "Asia/Kolkata",
-                 "Etc/GMT-4", "Etc/GMT+4", "Australia/Broken_Hill"]
-
     # Test timezone naive timestamp array
     _check_datetime_components(timestamps)
 
@@ -2033,6 +2026,9 @@ def test_extract_datetime_components():
         # TODO: We should test on windows once ARROW-13168 is resolved.
         pytest.skip('Timezone database is not available on Windows yet')
     else:
+        timezones = ["UTC", "US/Central", "Asia/Kolkata",
+                     "Etc/GMT-4", "Etc/GMT+4", "Australia/Broken_Hill"]
+
         for timezone in timezones:
             _check_datetime_components(timestamps, timezone)
 
@@ -2307,13 +2303,12 @@ def check_partition_nth(data, indices, pivot, null_placement):
             assert all(v is None for v in until_pivot)
         else:
             assert all(v is None for v in after_pivot)
+    elif null_placement == "at_start":
+        assert all(v is None or v <= p for v in until_pivot)
+        assert all(v >= p for v in after_pivot)
     else:
-        if null_placement == "at_start":
-            assert all(v is None or v <= p for v in until_pivot)
-            assert all(v >= p for v in after_pivot)
-        else:
-            assert all(v <= p for v in until_pivot)
-            assert all(v is None or v >= p for v in after_pivot)
+        assert all(v <= p for v in until_pivot)
+        assert all(v is None or v >= p for v in after_pivot)
 
 
 def test_partition_nth():
@@ -2840,7 +2835,7 @@ def test_random():
             pa.array([], type=pa.float64())
 
     # System random initialization => outputs all distinct
-    arrays = [tuple(pc.random(100).to_pylist()) for i in range(10)]
+    arrays = [tuple(pc.random(100).to_pylist()) for _ in range(10)]
     assert len(set(arrays)) == len(arrays)
 
     arrays = [tuple(pc.random(100, initializer=i % 7).to_pylist())
@@ -3105,9 +3100,9 @@ def test_list_slice_bad_parameters():
 
     # Step not >= 1
     msg = "`step` must be >= 1, got: "
-    with pytest.raises(pa.ArrowInvalid, match=msg + "0"):
+    with pytest.raises(pa.ArrowInvalid, match=f"{msg}0"):
         pc.list_slice(arr, 0, 1, step=0)
-    with pytest.raises(pa.ArrowInvalid, match=msg + "-1"):
+    with pytest.raises(pa.ArrowInvalid, match=f"{msg}-1"):
         pc.list_slice(arr, 0, 1, step=-1)
 
 
